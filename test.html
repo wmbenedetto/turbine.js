@@ -7,8 +7,8 @@
 <script language="JavaScript" type="text/javascript" src="Turbine.js"></script>
 <script language="JavaScript" type="text/javascript">
 
-    $(document).bind('Turbine.testing.started',function(){
-        alert('Turbine.testing.started');
+    $(document).bind('Turbine|testing|started',function(){
+        alert('Turbine|testing|started');
     });
 
     $(document).ready(function(){
@@ -69,44 +69,46 @@
 
             workflow : {
 
-                "config" : {
+                 config : {
 
-                    "shortcuts" : {
-
-                    },
-
-                    "variables" : {
+                    shortcuts : {
 
                     },
 
-                    "always" : {
+                    variables : {
 
-                        "timeout" : {
-                            "after"                         : "300000",
-                            "publish"                       : "Turbine.start.transition",
-                            "using" : {
-                                "module"                    : "Status",
-                                "view"                      : "Fail",
-                                "content"                   : "fail.generalError",
-                                "download" 		            : "true",
-                                "tryAgain"                  : "true"
+                    },
+
+                    always : {
+
+                        timeout : {
+                            after                           : 300000,
+                            publish : {
+                                message                     : "Turbine|start|transition",
+                                using : {
+                                    module                  : "Status",
+                                    view                    : "Fail",
+                                    content                 : "fail.generalError",
+                                    download 		        : true,
+                                    tryAgain                : true
+                                }
                             },
-                            "then"                          : "done"
+                            then                            : "done"
                         }
                     }
                 },
 
-                "queries" : {
+                queries : {
 
                     isAvailable : {
                         yes : {
                             publish : {
-                                message : ["Turbine.testing.started","Turbine.foo.started"],
+                                message : ["Turbine|testing|started","Turbine|foo|started"],
                                 using : {
                                     foo : 'bar'
                                 }
                             },
-                            waitFor : "UI.button.clicked.*",
+                            waitFor : "UI|button|clicked",
                             repeat : {
                                 limit : 5,
                                 then : 'done'
@@ -116,7 +118,7 @@
                     }
                 },
 
-                "mixins" : {
+                mixins : {
 
                 }
             }
