@@ -5,7 +5,7 @@
  *  / / / /_/ / _, _/ /_/ // // /|  / /____/ /_/ /___/ /
  * /_/  \____/_/ |_/_____/___/_/ |_/_____(_)____//____/
  *
- * Turbine : The JavaScript Workflow Engine
+ * Turbine.js : The JavaScript Workflow Engine
  *
  * Copyright (c) 2012 Warren Benedetto <warren@transfusionmedia.com>
  *
@@ -68,6 +68,15 @@
      * @param initObj Initialization object
      */
     var Turbine = function Turbine(initObj) {
+
+        if (typeof initObj !== 'object' || initObj === null){
+
+            var errorMsg = 'Turbine constructor must be passed an initialization object';
+
+            this.report('INIT_OBJ_NOT_DEFINED',errorMsg);
+
+            throw new Error(errorMsg);
+        }
 
         this.setDefaults();
 
@@ -364,6 +373,13 @@
             }
         },
 
+        /**
+         * Checks whether the given level is loggable based on the
+         * current log level
+         *
+         * @param level The level to check
+         * @return {Boolean}
+         */
         isLoggable : function(level){
 
             var currentLogLevel                 = this.logLevels[this.logLevel];
@@ -373,29 +389,24 @@
         },
 
         /**
-         * Default implementation of report() function. Used to report errors in Turbine.
-         * This can be overridden by defining a report() function in the initObj passed to
-         * init()
+         * Default implementation of report() method. Used to report errors in Turbine.
+         * This can be overridden by defining a report() method in the initObj passed to
+         * the constructor.
          *
          * @param handle Short identifier of the error, i.e. SOMETHING_BAD_HAPPENED or 100.1111
          * @param desc Human-readable description of the error
          * @param payload Object containing data needed to report or debug the error
          */
         report : function(handle,desc,payload) {
-
-            if (handle === 'REQUIRED_FUNCTIONS_NOT_DEFINED') {
-                alert(desc);
-            }
-
             this.log(desc + ' (' + handle + ')',payload,'ERROR');
         },
 
         /**
-         * Default implementation of publish() function, using jQuery's trigger() function
+         * Default implementation of publish() method, using jQuery's trigger() function
          * to publish messages.
          *
-         * This can be overridden by defining a publish() function in the initObj passed to
-         * init()
+         * This can be overridden by defining a publish() method in the initObj passed to
+         * the constructor.
          *
          * @param message The message or array of messages to publish
          * @param payload Data object
@@ -419,11 +430,11 @@
         },
 
         /**
-         * Default implementation of listen() function, using jQuery's bind() function
+         * Default implementation of listen() method, using jQuery's bind() function
          * to bind handlers to messages.
          *
-         * This can be overridden by defining a listen() function in the initObj passed to
-         * init()
+         * This can be overridden by defining a listen() method in the initObj passed to
+         * the constructor.
          *
          * @param message The message for which to listen
          * @param handler The function to execute upon receiving the message
@@ -445,11 +456,11 @@
         },
 
         /**
-         * Default implementation of remove() function, using jQuery's unbind() function
+         * Default implementation of remove() method, using jQuery's unbind() function
          * to unbind handlers from messages.
          *
-         * This can be overridden by defining a remove() function in the initObj passed to
-         * init()
+         * This can be overridden by defining a remove() method in the initObj passed to
+         * the constructor.
          *
          * @param message The message for which to stop listening
          */
@@ -467,11 +478,11 @@
         },
 
         /**
-         * Default implementation of compare() function. Used to compare two messages to each
+         * Default implementation of compare() method. Used to compare two messages to each
          * other, to determine if they match.
          *
-         * This can be overridden by defining a compare() function in the initObj passed to
-         * init()
+         * This can be overridden by defining a compare() method in the initObj passed to
+         * the constructor.
          *
          * @param msg1 The first message to compare
          * @param msg2 The second message to compare
@@ -482,7 +493,7 @@
         },
 
         /**
-         * Starts the Turbine by executing the first queued query
+         * Starts Turbine by executing the first queued query
          */
         start : function() {
 
@@ -496,7 +507,7 @@
         },
 
         /**
-         * Stops the Turbine
+         * Stops Turbine
          */
         stop : function() {
 
@@ -1351,7 +1362,7 @@
         },
 
         /**
-         * Starts global timeout timer, which will fire if the Turbine hasn't reached a stop
+         * Starts global timeout timer, which will fire if Turbine hasn't reached a stop
          * query within the global timeout limit
          *
          * @param query The active query when the timeout is set
@@ -1508,7 +1519,7 @@
             /* Prepend @ symbol if not already there */
             shortcut                            = (shortcut.indexOf('@') !== 0) ? '@' + shortcut : shortcut;
 
-            return (this.utils.isObjLiteral(this.workflow.config.shortcuts)) ? this.workflow.config.shortcuts[shortcut] : null;
+            return (this.utils.isObjLiteral(this.workflow.config) && this.utils.isObjLiteral(this.workflow.config.shortcuts)) ? this.workflow.config.shortcuts[shortcut] : null;
         },
 
         /**
@@ -1617,7 +1628,7 @@
 
                         if (source[thisItem]) {
 
-                            this.log('replace', 'Replacing ' + thisItem + ' ' + type + ' with', source[thisItem],'DEBUG');
+                            this.log('replace', 'Replacing ' + thisItem + ' ' + type + ' with', source[thisItem], 'DEBUG');
 
                             target[item]             = source[thisItem];
                         }
