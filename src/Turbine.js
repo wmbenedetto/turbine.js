@@ -78,6 +78,8 @@
             throw new Error(errorMsg);
         }
 
+        this.api                                = this.getPublicAPI();
+
         this.setDefaults();
 
         this.setName(initObj.name);
@@ -113,6 +115,16 @@
             WARN                                : 2,
             INFO                                : 3,
             DEBUG                               : 4
+        },
+
+        getPublicAPI : function(){
+
+            return {
+                getConfigVar                    : this.getConfigVar.bind(this),
+                setResponse                     : this.setResponse.bind(this),
+                start                           : this.start.bind(this),
+                stop                            : this.stop.bind(this)
+            }
         },
 
         /**
@@ -212,6 +224,13 @@
 
                 this.log('importWorkflow', 'Importing workflow');
 
+                this.workflow                       = initObj.workflow || {};
+                this.workflow.config                = initObj.workflow.config || {};
+                this.workflow.config.shortcuts      = initObj.workflow.config.shortcuts || {};
+                this.workflow.config.variables      = initObj.workflow.config.variables || {};
+                this.workflow.config.always         = initObj.workflow.config.always || {};
+                this.workflow.mixins                = initObj.workflow.mixins || {};
+
                 if (this.utils.isObjLiteral(initObj.workflow.config)) {
                     this.importConfig(initObj.workflow);
                 }
@@ -220,11 +239,9 @@
                     this.importQueries(initObj.workflow);
                 }
 
-                this.workflow                   = initObj.workflow;
-
             } else {
 
-                var errorMsg                    = '[' + this.name + '.importWorkflow()] Could not import workflow. Workflow must be an object literal.';
+                var errorMsg                        = '[' + this.name + '.importWorkflow()] Could not import workflow. Workflow must be an object literal.';
 
                 this.report('COULD_NOT_IMPORT_WORKFLOW',errorMsg);
 
@@ -666,7 +683,7 @@
                         /* "waitFor" tells us to wait for an event (or events) before executed "then" query */
                         if (response.waitFor) {
 
-                            if (this.isEarlierQuery(query,response.then)) {
+                            if (this.isEarlierQuery(response.then,query)) {
 
                                 this.rewind(query,response.then,response.waitFor);
 
@@ -835,10 +852,10 @@
          * Checks whether the new query is earlier than the current query
          * (e.g. we're going backwards in the workflow)
          *
-         * @param currentQuery The query we're currently executing
          * @param newQuery The query to execute next
+         * @param currentQuery The query we're currently executing
          */
-        isEarlierQuery : function(currentQuery,newQuery) {
+        isEarlierQuery : function(newQuery,currentQuery) {
 
             if (currentQuery === newQuery) {
                 return true;
@@ -1166,7 +1183,7 @@
 
                         var globalListener      = this.globalListeners[msg].waitFor[i];
 
-                        if (!this.inMessageArray(globalListener,waitingFor)) {
+                        if (!this.utils.inArray(globalListener,waitingFor)) {
                             waitingFor.push(globalListener);
                         }
                     }
@@ -1174,25 +1191,6 @@
             }
 
             return waitingFor;
-        },
-
-        /**
-         * Checks whether a message is already in an array of messages
-         *
-         * @param message The message to check
-         * @param messageArray The array of messages in which to look
-         * @return {Boolean}
-         */
-        inMessageArray : function(message,messageArray) {
-
-            for (var i=0;i<messageArray.length;i++) {
-
-                if (message === messageArray[i]) {
-                    return true;
-                }
-            }
-
-            return false;
         },
 
         /**
@@ -1345,6 +1343,8 @@
                 this.log('clearGlobalTimer', 'Clearing global timer', this.timers.global, 'DEBUG');
 
                 clearTimeout(this.timers.global);
+
+                this.timers.global              = null;
             }
         },
 
@@ -1358,6 +1358,8 @@
                 this.log('clearDelayTimer', 'Clearing delay timer', this.timers.delay, 'DEBUG');
 
                 clearTimeout(this.timers.delay);
+
+                this.timers.delay               = null;
             }
         },
 
@@ -1397,7 +1399,19 @@
          * @return {Number}
          */
         getGlobalTimeout : function() {
-            return this.workflow.config.always.timeout.after || this.defaultGlobalTimeout;
+
+            if (this.utils.isObjLiteral(this.workflow.config) &&
+                this.utils.isObjLiteral(this.workflow.config.always) &&
+                this.utils.isObjLiteral(this.workflow.config.always.timeout) &&
+                this.workflow.config.always.timeout.after
+            ){
+
+                return this.workflow.config.always.timeout.after;
+
+            } else {
+
+                return this.defaultGlobalTimeout;
+            }
         },
 
         /**
@@ -1473,10 +1487,10 @@
          */
         getResponse : function(query) {
 
-            this.responses[query]               = (this.hasQueryFunction(query)) ? this.queries[query]() : (this.responses[query] === true || this.responses[query] === 'yes');
+            this.responses[query]               = (this.hasQueryFunction(query)) ? this.queries[query]() : this.responses[query];
 
             /* Convert boolean result to yes/no string */
-            if (typeof this.responses[query] === 'boolean') {
+            if (typeof this.responses[query] === 'boolean' || !this.responses[query]) {
                 this.responses[query]       = (this.responses[query]) ? 'yes' : 'no';
             }
 
@@ -1623,7 +1637,7 @@
 
                     var thisItem                    = target[item];
 
-                    /* Replace variables with values defined in config */
+                    /* Replace variables with values defined in source */
                     if (typeof thisItem === 'string' && thisItem.indexOf(prepend) === 0) {
 
                         if (source[thisItem]) {
@@ -1668,6 +1682,25 @@
              */
             isArray : function(obj) {
                 return Object.prototype.toString.call(obj) === '[object Array]';
+            },
+
+            /**
+             * Checks whether an item is already in the source array
+             *
+             * @param item The item to check
+             * @param source The source array in which to look
+             * @return {Boolean}
+             */
+            inArray : function(item,source) {
+
+                for (var i=0;i<source.length;i++) {
+
+                    if (item === source[i]) {
+                        return true;
+                    }
+                }
+
+                return false;
             },
 
             /**
