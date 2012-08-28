@@ -56,7 +56,15 @@ var TurbineTests = TestCase('TurbineTests', {
                             }
                         },
                         then                            : "done"
-                    }
+                    },
+
+                    waitFor : [
+
+                        {
+                            "waitFor"                   : "*|issue|detected|STOP",
+                            "then"                      : "done"
+                        }
+                    ]
                 }
             },
 
@@ -65,7 +73,8 @@ var TurbineTests = TestCase('TurbineTests', {
             mixins : {
 
                 "!testMixin" : {
-                    then : 'done'
+                    waitFor                             : "UI|button|clicked",
+                    then                                : 'done'
                 }
             }
         };
@@ -283,22 +292,6 @@ var TurbineTests = TestCase('TurbineTests', {
         turbine.resetResponse('isAvailable');
 
         assertTrue('response reset to return value of reset function',turbine.responses.isAvailable === 'foo');
-    },
-
-    testHasResponse : function(){
-
-        var turbine = new Turbine(this.initObj);
-
-        assertFalse('query has no response by default',turbine.hasResponse('isAvailable'));
-        assertFalse('non-existent query has no response',turbine.hasResponse('isFakeQuery'));
-
-        turbine.responses['isAvailable'] = null;
-
-        assertFalse('query has no response when response is null',turbine.hasResponse('isAvailable'));
-
-        turbine.responses['isAvailable'] = 'yes';
-
-        assertTrue('query has response once response is set to string',turbine.hasResponse('isAvailable'));
     },
 
     testGetResponse : function(){
@@ -705,6 +698,217 @@ var TurbineTests = TestCase('TurbineTests', {
 
         var events5 = $._data(turbine, "events");
 
-        assertTrue('array of listeners removed',!events5);
+        assertTrue('array of listeners removed',(typeof events5.foo1 === 'undefined' && typeof events5.foo2 === 'undefined' && typeof events5.foo3 === 'undefined'));
+    },
+
+    testImportGlobalListeners : function(){
+
+        var turbine = new Turbine({ workflow : {} });
+        var listener = this.workflow.config.always.waitFor[0];
+
+        turbine.importGlobalListener(listener,this.workflow);
+
+        assertTrue('global listener has been added',typeof turbine.globalListeners[listener.waitFor] !== 'undefined');
+        assertTrue('numGlobalListeners is incremented by 1',turbine.numGlobalListeners === 1);
+    },
+
+    testBuildWaitingForObj : function(){
+
+        var turbine = new Turbine(this.initObj);
+        var waitingFor = turbine.buildWaitingForObj(this.query.yes.waitFor);
+
+        assertTrue('length of waitingFor array includes query waitFor message(s) plus global listeners\' waitFor message(s)',waitingFor.length === (this.workflow.config.always.waitFor.length + 1));
+        assertTrue('query waitFor message is in waitingFor array',turbine.utils.inArray(this.query.yes.waitFor,waitingFor));
+        assertTrue('global listener waitFor message is in waitingFor array',turbine.utils.inArray(this.workflow.config.always.waitFor[0].waitFor[0],waitingFor));
+    },
+
+    testBuildNextQueryObj : function(){
+
+        var turbine = new Turbine(this.initObj);
+        var nextQueryObj = turbine.buildNextQueryObj('isComplete',[this.query.yes.waitFor]);
+
+        assertTrue('next query for query waitFor is added to nextQuery object',nextQueryObj[this.query.yes.waitFor] === 'isComplete');
+        assertTrue('next query for global listener waitFor is added to nextQuery object',nextQueryObj[this.workflow.config.always.waitFor[0].waitFor[0]] === this.workflow.config.always.waitFor[0].then);
+    },
+
+    testGetNextQuery : function(){
+
+        var turbine = new Turbine(this.initObj);
+        var nextQuery = turbine.getNextQuery(this.workflow.config.always.waitFor[0].waitFor[0]);
+
+        assertTrue('next query when global listener waitFor message is received is corresponding "then" query',nextQuery === this.workflow.config.always.waitFor[0].then);
+    },
+
+    testStartGlobalTimeout : function(){
+
+        var turbine = new Turbine(this.initObj);
+
+        turbine.startGlobalTimeout('isAvailable',this.query.yes);
+
+        assertTrue('global timer var holds timer number',typeof turbine.timers.global === 'number');
+    },
+
+    testStartDelayTimeout : function(){
+
+        var turbine = new Turbine(this.initObj);
+
+        turbine.startDelayTimeout('isAvailable',this.query.yes);
+
+        assertTrue('delay timer var holds timer number',typeof turbine.timers.delay === 'number');
+    },
+
+    testHandleIncomingMessage : function(){
+
+        var turbine = new Turbine(this.initObj);
+
+        turbine.handleIncomingMessage(this.workflow.config.always.waitFor[0].waitFor[0]);
+
+        assertTrue('next query is "then" query corresponding to global listener waitFor message',turbine.nextQuery === this.workflow.config.always.waitFor[0].then);
+        assertTrue('waitingFor is null',turbine.waitingFor === null);
+
+        turbine.stop();
+
+        var result = turbine.handleIncomingMessage(this.workflow.config.always.waitFor[0].waitFor[0]);
+
+        assertTrue('When Turbine is stopped, handleIncomingMessage exits early and returns null',result === null);
+    },
+
+    testQueue : function(){
+
+        var turbine = new Turbine(this.initObj);
+
+        turbine.queue('isComplete',this.query.yes.waitFor);
+
+        var events = $._data(turbine, "events");
+
+        assertTrue('Turbine is listening for waitFor message',this.query.yes.waitFor in events);
+        assertTrue('isComplete has been added to waitingFor object',turbine.utils.inArray(this.query.yes.waitFor,turbine.waitingFor));
+        assertTrue('isComplete has been added to nextQueryObj',turbine.nextQueryObj[this.query.yes.waitFor] === 'isComplete');
+        assertTrue('isComplete is stored as nextQuery',turbine.nextQuery === 'isComplete');
+    },
+
+    testClear : function(){
+
+        var turbine = new Turbine(this.initObj);
+
+        turbine.clear('isAvailable');
+
+        assertTrue('query timer is cleared',typeof turbine.timers.queries.isAvailable === 'undefined');
+        assertTrue('query response has been reset',turbine.responses.isAvailable === null);
+        assertTrue('query response repeat counter has been reset',turbine.workflow.queries.isAvailable.yes.repeat.counter === 0);
+    },
+
+    testNext : function(){
+
+        var turbine = new Turbine(this.initObj);
+
+        turbine.nextQuery = null;
+
+        var result = turbine.next();
+
+        assertTrue('next() exits early and returns null when nextQuery is null',result === null);
+
+        turbine.stop();
+
+        result = turbine.next();
+
+        assertTrue('next() exits early and returns null when Turbine is stopped',result === null);
+    },
+
+    testStart : function(){
+
+        var turbine = new Turbine(this.initObj);
+
+        turbine.start();
+
+        assertTrue('Turbine stopped flag is false once Turbine is started',turbine.stopped === false);
+    },
+
+    testExec : function(){
+
+        var turbine = new Turbine(this.initObj);
+
+        var result = turbine.exec('done');
+
+        assertTrue('exec() exits early and returns null when it receives a stop query',result === null);
+        assertTrue('stopped flag is set to true when exec() receives a stop query',turbine.stopped === true);
+
+        turbine = new Turbine(this.initObj);
+
+        turbine.stop();
+
+        result = turbine.exec('isAvailable');
+
+        assertTrue('exec() exits early and returns null when Turbine is stopped',result === null);
+
+        turbine = new Turbine(this.initObj);
+
+        turbine.queries['isAvailable'] = function(){
+            return 'FOO_BAR';
+        };
+
+        result = turbine.exec('isAvailable');
+
+        assertTrue('exec() exits early and returns null when the response doesn\'t exist and there\'s no default response set',result === null);
+    },
+
+    "test processResponse when stopped" : function(){
+
+        var turbine = new Turbine(this.initObj);
+
+        turbine.stop();
+
+        var result = turbine.processResponse('isAvailable',this.query.yes);
+
+        assertTrue('processResponse() exits early and returns null when Turbine is stopped',result === null);
+    },
+
+    "test processResponse with delay" : function(){
+
+        var turbine = new Turbine(this.initObj);
+
+        turbine.processResponse('isAvailable',{
+            delay : 1000,
+            then : 'done'
+        });
+
+        assertTrue('delay timeout is set',typeof turbine.timers.delay === 'number');
+    },
+
+    "test processResponse with report" : function(){
+
+        var turbine = new Turbine(this.initObj);
+
+        turbine.processResponse('isAvailable',{
+            report : 'SOMETHING_BAD_HAPPENED',
+            then : 'done'
+        });
+    },
+
+    "test processResponse with earlier query" : function(){
+
+        var turbine = new Turbine(this.initObj);
+
+        turbine.processResponse('isComplete',{
+            waitFor : 'UI|button|clicked|STOP',
+            then : 'isAvailable'
+        });
+    },
+
+    "test processResponse with timeout" : function(){
+
+        var turbine = new Turbine(this.initObj);
+
+        turbine.processResponse('isComplete',{
+            waitFor : 'UI|button|clicked|STOP',
+            timeout : {
+                after : 1000,
+                then : 'done'
+            },
+            then : 'done'
+        });
+
+        assertTrue('response timeout is set',turbine.timers.queries.isComplete.length > 0);
     }
+
 });

@@ -32,10 +32,10 @@
     var $                                       = window.jQuery  || null;
     var console                                 = window.console || {};
 
-    console.log                                 = console.log   || function() {};
-    console.info                                = console.info  || console.log;
-    console.error                               = console.error || console.log;
-    console.warn                                = console.warn  || console.log;
+    console.log                                 = (typeof console.log   === 'function') ? console.log   : function() {};
+    console.info                                = (typeof console.info  === 'function') ? console.info  : console.log;
+    console.error                               = (typeof console.error === 'function') ? console.error : console.log;
+    console.warn                                = (typeof console.warn  === 'function') ? console.warn  : console.log;
 
     /**
      * Add bind() to Function prototype for browsers that don't yet support ECMAScript 5.
@@ -415,7 +415,7 @@
          * @param payload Object containing data needed to report or debug the error
          */
         report : function(handle,desc,payload) {
-            this.log(desc + ' (' + handle + ')',payload,'ERROR');
+            this.log('report', desc + ' (' + handle + ')', payload, 'ERROR');
         },
 
         /**
@@ -571,13 +571,6 @@
             this.nextQuery                      = null;
             this.responses[query]               = this.getResponse(query);
 
-            if (!this.hasResponse(query)) {
-
-                this.report('RESPONSE_NOT_RECEIVED', '[' + this.name + '.exec()] No response received for ' + query + ' query');
-
-                return null;
-            }
-
             var responseName                    = this.responses[query];
             var responseObj                     = this.workflow.queries[query][responseName];
 
@@ -632,7 +625,7 @@
 
             if (response.delay && !response.isAfterDelay) {
 
-                this.startDelay(query,response);
+                this.startDelayTimeout(query,response);
 
             } else {
 
@@ -889,8 +882,6 @@
 
             this.clearQueryTimer(query);
 
-            this.responses[query]               = null;
-
             /* Reset counters for repeat queries */
             for (var response in this.workflow.queries[query]) {
 
@@ -1057,9 +1048,9 @@
          * @param query The query being delayed
          * @param response The response being delayed
          */
-        startDelay : function(query,response) {
+        startDelayTimeout : function(query,response) {
 
-            this.log('startDelay',query + ' delay started. Delayed for ' + response.delay + ' ms', response);
+            this.log('startDelayTimeout',query + ' delay started. Delayed for ' + response.delay + ' ms', response);
 
             this.publish('Turbine|delay|started',{
 
@@ -1194,32 +1185,33 @@
         },
 
         /**
-         * Build object that associates messages with next queries
+         * Build object that associates waitFor messages with the queries to
+         * execute once the waitFor message has been received.
          *
          * This is required because global listeners have different "then" queries
          * than listeners in the query's waitFor array
          *
-         * @param query The default next query for the query's waitFor messages
+         * @param nextQuery The next query to execute
          * @param waitingFor Array of messages to wait for
          */
-        buildNextQueryObj : function(query,waitingFor) {
+        buildNextQueryObj : function(nextQuery,waitingFor) {
 
-            var nextQuery                       = {};
+            var nextQueryObj                    = {};
 
             /* Add query waitFor messages to waitingFor object */
             for (var i=0;i<waitingFor.length;i++) {
-                nextQuery[waitingFor[i]]        = query;
+                nextQueryObj[waitingFor[i]]     = nextQuery;
             }
 
             /* Add global listeners to waitingFor object */
             for (var msg in this.globalListeners) {
 
                 if (this.globalListeners.hasOwnProperty(msg)) {
-                    nextQuery[msg]              = this.globalListeners[msg].then;
+                    nextQueryObj[msg]           = this.globalListeners[msg].then;
                 }
             }
 
-            return nextQuery;
+            return nextQueryObj;
         },
 
         /**
@@ -1252,6 +1244,8 @@
             this.waitingFor                     = null;
 
             this.next();
+
+            return true;
         },
 
         /**
@@ -1497,15 +1491,6 @@
             this.log('getResponse',query + '?', this.responses[query]);
 
             return this.responses[query];
-        },
-
-        /**
-         * Checks whether query already has a response
-         *
-         * @param query The query to check
-         */
-        hasResponse : function(query) {
-            return typeof this.responses[query] !== 'undefined' && this.responses[query] !== null && typeof this.responses[query] !== 'boolean';
         },
 
         /**
