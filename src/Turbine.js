@@ -52,18 +52,17 @@
     };
 
     /**
-     * Initializes Turbine via a single initObj object.
+     * Initializes Turbine via initObj object.
      *
-     * This initObj must contain function definitions for publish(),
-     * listen(), and remove() as well as an object containing the workflow
-     * config, queries, and mixins.
+     * This initObj must define the workflow config, queries, and mixins.
      *
-     * In addition to these required items, the initObj can also contain
-     * objects containing query and reset functions, default responses, and
-     * function definitions for log(), compare(), and report().
+     * The initObj can also optionally define functions for publish(),
+     * listen(), and remove(). If these aren't defined, jQuery's
+     * trigger/bind/unbind will be used by default.
      *
-     * It can also define the name of this Turbine instance (used for logging),
-     * and the logLevel.
+     * The initObj can also define query and reset functions; default responses;
+     * function definitions for log(), compare(), and report(); the name of this
+     * Turbine instance (used for logging); and the logLevel.
      *
      * @param initObj Initialization object
      */
@@ -82,8 +81,8 @@
 
         this.setDefaults();
 
-        this.setName(initObj.name);
         this.setLogLevel(initObj.logLevel);
+        this.setName(initObj.name);
 
         this.importFunctions(initObj);
         this.importObjects(initObj);
@@ -181,7 +180,7 @@
 
             if (!$ && (!('publish' in importedFunctions) || !('listen' in importedFunctions) || !('remove' in importedFunctions))) {
 
-                var errorMsg                    = '[' + this.name + '.importFunctions()] You must either define publish(), listen(), and remove() functions via Turbine.init(), or include jQuery in the page.';
+                var errorMsg                    = '[' + this.name + '.importFunctions()] You must either define publish(), listen(), and remove() functions via the initObj passed to the Turbine constructor, or you must include jQuery in the page.';
 
                 this.report('REQUIRED_FUNCTIONS_NOT_DEFINED',errorMsg);
 
@@ -362,8 +361,8 @@
         /**
          * Default log() implementation
          *
-         * This can be overridden by defining a log() function in the initObj passed to
-         * init()
+         * This can be overridden by defining a log() function in the initObj
+         * passed to the constructor
          *
          * @param funcName The name of the function generating the log message
          * @param message The message to log
