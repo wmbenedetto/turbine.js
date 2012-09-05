@@ -77,8 +77,6 @@
             throw new Error(errorMsg);
         }
 
-        this.api                                = this.getPublicAPI();
-
         this.globalListeners                    = {};
         this.globalTimeoutAllowed               = false;
         this.logLevel                           = initObj.logLevel || 'ERROR';
@@ -97,6 +95,8 @@
             delay                               : null,
             global                              : null
         };
+
+        this.api                                = this.getPublicAPI();
 
         this.importFunctions(initObj);
         this.importObjects(initObj);

@@ -192,11 +192,11 @@ var TurbineTests = TestCase('TurbineTests', {
 
         var turbine = new Turbine(this.initObj);
 
-        assertTrue('name is set to Turbine',turbine.name === 'Turbine');
-        assertTrue('logLevel is set to ERROR',turbine.logLevel === 'ERROR');
-        assertTrue('globalTimeoutAllowed is false',turbine.globalTimeoutAllowed === false);
+        assertTrue('name is set to Turbine',turbine.name === 'TurbineTest');
+        assertTrue('logLevel is set to ERROR',turbine.logLevel === 'DEBUG');
+        assertTrue('globalTimeoutAllowed is true',turbine.globalTimeoutAllowed === true);
         assertTrue('stopped is false',turbine.stopped === false);
-        assertTrue('numGlobalListeners is 0',turbine.numGlobalListeners === 0);
+        assertTrue('numGlobalListeners is 1',turbine.numGlobalListeners === 1);
         assertTrue('globalListeners is an object literal',turbine.utils.isObjLiteral(turbine.globalListeners));
         assertTrue('queries is an object literal',turbine.utils.isObjLiteral(turbine.queries));
         assertTrue('queryOrder is an array',turbine.utils.isArray(turbine.queryOrder));
@@ -207,7 +207,7 @@ var TurbineTests = TestCase('TurbineTests', {
         assertTrue('timers.queries is an object literal',turbine.utils.isObjLiteral(turbine.timers.queries));
         assertTrue('timers.delay is null',turbine.timers.delay === null);
         assertTrue('timers.global is null',turbine.timers.global === null);
-        assertTrue('waitingFor is null',turbine.waitingFor === null);
+        assertTrue('waitingFor is an object',typeof turbine.waitingFor === 'object');
     },
 
     testGetConfigShortcut : function(){
