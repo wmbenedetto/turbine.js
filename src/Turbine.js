@@ -79,10 +79,24 @@
 
         this.api                                = this.getPublicAPI();
 
-        this.setDefaults();
+        this.globalListeners                    = {};
+        this.globalTimeoutAllowed               = false;
+        this.logLevel                           = initObj.logLevel || 'ERROR';
+        this.name                               = initObj.name || 'Turbine';
+        this.numGlobalListeners                 = 0;
+        this.queries                            = {};
+        this.queryOrder                         = [];
+        this.resets                             = {};
+        this.responses                          = {};
+        this.stopped                            = false;
+        this.waitingFor                         = null;
+        this.workflow                           = {};
 
-        this.setLogLevel(initObj.logLevel);
-        this.setName(initObj.name);
+        this.timers = {
+            queries                             : {},
+            delay                               : null,
+            global                              : null
+        };
 
         this.importFunctions(initObj);
         this.importObjects(initObj);
@@ -123,31 +137,6 @@
                 setResponse                     : this.setResponse.bind(this),
                 start                           : this.start.bind(this),
                 stop                            : this.stop.bind(this)
-            }
-        },
-
-        /**
-         * Initializes instance properties with default values
-         */
-        setDefaults : function(){
-
-            this.globalListeners                = {};
-            this.globalTimeoutAllowed           = false;
-            this.logLevel                       = 'ERROR';
-            this.name                           = 'Turbine';
-            this.numGlobalListeners             = 0;
-            this.queries                        = {};
-            this.queryOrder                     = [];
-            this.resets                         = {};
-            this.responses                      = {};
-            this.stopped                        = false;
-            this.waitingFor                     = null;
-            this.workflow                       = {};
-
-            this.timers = {
-                queries                         : {},
-                delay                           : null,
-                global                          : null
             }
         },
 
@@ -1637,24 +1626,6 @@
                     }
                 }
             }
-        },
-
-        /**
-         * Sets the name for this Turbine instance
-         *
-         * @param name Instance name
-         */
-        setName : function(name) {
-            this.name = name || this.name;
-        },
-
-        /**
-         * Sets the log level
-         *
-         * @param level Log level (OFF, ERROR, WARN, INFO, or DEBUG)
-         */
-        setLogLevel : function(level) {
-            this.logLevel = level || this.logLevel;
         },
 
         utils : {

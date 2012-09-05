@@ -188,11 +188,9 @@ var TurbineTests = TestCase('TurbineTests', {
         assertTrue('Mixin replaced recursively',target.bar.baz === source['!mixin2']);
     },
 
-    testDefaults : function(){
+    testConstructor : function(){
 
         var turbine = new Turbine(this.initObj);
-
-        turbine.setDefaults();
 
         assertTrue('name is set to Turbine',turbine.name === 'Turbine');
         assertTrue('logLevel is set to ERROR',turbine.logLevel === 'ERROR');
@@ -210,24 +208,6 @@ var TurbineTests = TestCase('TurbineTests', {
         assertTrue('timers.delay is null',turbine.timers.delay === null);
         assertTrue('timers.global is null',turbine.timers.global === null);
         assertTrue('waitingFor is null',turbine.waitingFor === null);
-    },
-
-    testSetName : function(){
-
-        var turbine = new Turbine(this.initObj);
-
-        turbine.setName('Foo');
-
-        assertTrue('name is set to Foo',turbine.name === 'Foo');
-    },
-
-    testSetLogLevel : function(){
-
-        var turbine = new Turbine(this.initObj);
-
-        turbine.setName('DEBUG');
-
-        assertTrue('logLevel is set to DEBUG',turbine.logLevel === 'DEBUG');
     },
 
     testGetConfigShortcut : function(){
