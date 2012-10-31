@@ -1,4 +1,5 @@
-/*!
+/*! Turbine.js | MIT License | https://github.com/wmbenedetto/turbine.js#mit-license */
+/**
  *   ________  ______  ____  _____   ________     _______
  *  /_  __/ / / / __ \/ __ )/  _/ | / / ____/    / / ___/
  *   / / / / / / /_/ / __  |/ //  |/ / __/  __  / /\__ \
