@@ -1,4 +1,8 @@
-/*! Turbine.js | MIT License | https://github.com/wmbenedetto/turbine.js#mit-license */
+/** @license Turbine.js | MIT License | https://github.com/wmbenedetto/turbine.js#mit-license */
+if (typeof MINIFIED === 'undefined'){
+    MINIFIED = false;
+}
+
 /**
  *   ________  ______  ____  _____   ________     _______
  *  /_  __/ / / / __ \/ __ )/  _/ | / / ____/    / / ___/
@@ -31,12 +35,15 @@
 (function(window,undefined) {
 
     var $                                       = window.jQuery  || null;
-    var console                                 = window.console || {};
 
-    console.log                                 = (typeof console.log   === 'function') ? console.log   : function() {};
-    console.info                                = (typeof console.info  === 'function') ? console.info  : console.log;
-    console.error                               = (typeof console.error === 'function') ? console.error : console.log;
-    console.warn                                = (typeof console.warn  === 'function') ? console.warn  : console.log;
+    if (!MINIFIED){
+
+        var console                             = window.console || {};
+        console.log                             = (typeof console.log   === 'function') ? console.log   : function() {};
+        console.info                            = (typeof console.info  === 'function') ? console.info  : console.log;
+        console.error                           = (typeof console.error === 'function') ? console.error : console.log;
+        console.warn                            = (typeof console.warn  === 'function') ? console.warn  : console.log;
+    }
 
     /**
      * Add bind() to Function prototype for browsers that don't yet support ECMAScript 5.
@@ -148,7 +155,9 @@
          */
         importFunctions : function(initObj) {
 
-            this.log('importFunctions', 'Importing functions');
+            if (!MINIFIED){
+                this.log('importFunctions', 'Importing functions');
+            }
 
             var thisFunc                        = null;
             var validFunctions                  = ['log','publish','listen','report','remove','compare'];
@@ -158,7 +167,9 @@
 
                 thisFunc                        = validFunctions[i];
 
-                this.log('importFunctions', '--> Importing ' + thisFunc + '() function', null, 'DEBUG');
+                if (!MINIFIED){
+                    this.log('importFunctions', '--> Importing ' + thisFunc + '() function', null, 'DEBUG');
+                }
 
                 if (typeof initObj[thisFunc] === 'function') {
 
@@ -185,7 +196,9 @@
          */
         importObjects : function(initObj) {
 
-            this.log('importObjects', 'Importing objects');
+            if (!MINIFIED){
+                this.log('importObjects', 'Importing objects');
+            }
 
             var thisObj                         = null;
             var validObjects                    = ['queries','resets','responses'];
@@ -194,7 +207,9 @@
 
                 thisObj                         = validObjects[i];
 
-                this.log('importObjects', '--> Importing ' + thisObj + ' object', null, 'DEBUG');
+                if (!MINIFIED){
+                    this.log('importObjects', '--> Importing ' + thisObj + ' object', null, 'DEBUG');
+                }
 
                 if (this.utils.isObjLiteral(initObj[thisObj])) {
                     this[thisObj]               = initObj[thisObj];
@@ -211,7 +226,9 @@
 
             if (this.utils.isObjLiteral(initObj.workflow)) {
 
-                this.log('importWorkflow', 'Importing workflow');
+                if (!MINIFIED){
+                    this.log('importWorkflow', 'Importing workflow');
+                }
 
                 this.workflow                       = initObj.workflow || {};
                 this.workflow.config                = initObj.workflow.config || {};
@@ -245,7 +262,9 @@
          */
         importConfig : function(workflow) {
 
-            this.log('importConfig', 'Importing config', workflow);
+            if (!MINIFIED){
+                this.log('importConfig', 'Importing config', workflow);
+            }
 
             var self                            = this;
 
@@ -276,7 +295,9 @@
          */
         importQueries : function(workflow) {
 
-            this.log('importQueries', 'Importing queries', workflow);
+            if (!MINIFIED){
+                this.log('importQueries', 'Importing queries', workflow);
+            }
 
             var totalQueries                    = 0;
 
@@ -309,7 +330,9 @@
          */
         importQuery : function(query,workflow) {
 
-            this.log('importQuery', 'Importing workflow query: ' + query, workflow.queries[query], 'DEBUG');
+            if (!MINIFIED){
+                this.log('importQuery', 'Importing workflow query: ' + query, workflow.queries[query], 'DEBUG');
+            }
 
             this.queries[query]                 = this.queries[query] || null;
 
@@ -337,7 +360,9 @@
 
             var thisResponse                    = workflow.queries[query][response];
 
-            this.log('importResponse', 'Importing ' + response + ' response to ' + query + ' query', thisResponse, 'DEBUG');
+            if (!MINIFIED){
+                this.log('importResponse', 'Importing ' + response + ' response to ' + query + ' query', thisResponse, 'DEBUG');
+            }
 
             /* Add counter to any repeat object */
             if (thisResponse.repeat) {
@@ -361,20 +386,22 @@
          */
         log : function(funcName,message,payload,level) {
 
-            payload                             = (!payload) ? '' : payload;
-            level                               = (!level) ? 'INFO' : level;
-            message                             = '[' + this.name + '.' + funcName + '()] ' + message;
+            if (!MINIFIED){
+                payload                             = (!payload) ? '' : payload;
+                level                               = (!level) ? 'INFO' : level;
+                message                             = '[' + this.name + '.' + funcName + '()] ' + message;
 
-            if (this.isLoggable(level)) {
+                if (this.isLoggable(level)) {
 
-                if (level === 'ERROR') {
-                    console.error(message,payload);
-                } else if (level === 'WARN') {
-                    console.warn(message,payload);
-                } else if (level === 'INFO') {
-                    console.info(message,payload);
-                } else {
-                    console.log(message,payload);
+                    if (level === 'ERROR') {
+                        console.error(message,payload);
+                    } else if (level === 'WARN') {
+                        console.warn(message,payload);
+                    } else if (level === 'INFO') {
+                        console.info(message,payload);
+                    } else {
+                        console.log(message,payload);
+                    }
                 }
             }
         },
@@ -388,10 +415,12 @@
          */
         isLoggable : function(level){
 
-            var currentLogLevel                 = this.logLevels[this.logLevel];
-            var thisLogLevel                    = this.logLevels[level];
+            if (!MINIFIED){
+                var currentLogLevel                 = this.logLevels[this.logLevel];
+                var thisLogLevel                    = this.logLevels[level];
 
-            return thisLogLevel <= currentLogLevel;
+                return thisLogLevel <= currentLogLevel;
+            }
         },
 
         /**
@@ -404,7 +433,10 @@
          * @param payload Object containing data needed to report or debug the error
          */
         report : function(handle,desc,payload) {
-            this.log('report', desc + ' (' + handle + ')', payload, 'ERROR');
+
+            if (!MINIFIED){
+                this.log('report', desc + ' (' + handle + ')', payload, 'ERROR');
+            }
         },
 
         /**
@@ -420,7 +452,9 @@
          */
         publish : function(message,payload,callback) {
 
-            this.log('publish', 'Publishing message:', message);
+            if (!MINIFIED){
+                this.log('publish', 'Publishing message:', message);
+            }
 
             if (typeof message === 'string') {
                 message                         = [message];
@@ -447,7 +481,9 @@
          */
         listen : function(message,handler) {
 
-            this.log('listen', 'Adding listener for:', message, 'DEBUG');
+            if (!MINIFIED){
+                this.log('listen', 'Adding listener for:', message, 'DEBUG');
+            }
 
             if (typeof message === 'string') {
                 message                         = [message];
@@ -472,7 +508,9 @@
          */
         remove : function(message) {
 
-            this.log('remove', 'Removing listener for:', message, 'DEBUG');
+            if (!MINIFIED){
+                this.log('remove', 'Removing listener for:', message, 'DEBUG');
+            }
 
             if (typeof message === 'string') {
                 message                         = [message];
@@ -503,7 +541,9 @@
          */
         start : function() {
 
-            this.log('start', 'Starting Turbine');
+            if (!MINIFIED){
+                this.log('start', 'Starting Turbine');
+            }
 
             this.publish('Turbine|workflow|started');
 
@@ -517,7 +557,9 @@
          */
         stop : function() {
 
-            this.log('stop', 'Stopping Turbine');
+            if (!MINIFIED){
+                this.log('stop', 'Stopping Turbine');
+            }
 
             this.stopped                        = true;
 
@@ -535,7 +577,9 @@
                 return null;
             }
 
-            this.log('next', 'Executing next workflow query:', this.nextQuery);
+            if (!MINIFIED){
+                this.log('next', 'Executing next workflow query:', this.nextQuery);
+            }
 
             this.exec(this.nextQuery);
         },
@@ -578,7 +622,9 @@
                 }
             }
 
-            this.log('exec', 'Executing the ' + responseName + ' response to the ' + query + ' query');
+            if (!MINIFIED){
+                this.log('exec', 'Executing the ' + responseName + ' response to the ' + query + ' query');
+            }
 
             this.publish('Turbine|query|executed',{
 
@@ -606,7 +652,9 @@
                 return null;
             }
 
-            this.log('processResponse', 'Processing response', response);
+            if (!MINIFIED){
+                this.log('processResponse', 'Processing response', response);
+            }
 
             if (!preventGlobalTimeout) {
                 this.startGlobalTimeout(query,response);
@@ -741,7 +789,9 @@
 
             response.repeat.counter            += 1;
 
-            this.log('repeat', 'Repeating ' + query + ' (' + response.repeat.counter + ' of ' + response.repeat.limit + ' max)');
+            if (!MINIFIED){
+                this.log('repeat', 'Repeating ' + query + ' (' + response.repeat.counter + ' of ' + response.repeat.limit + ' max)');
+            }
 
             /* If the limit is null, repeat query indefinitely */
             if (response.repeat.limit === null) {
@@ -751,7 +801,9 @@
             /* If the limit has been reached, use fallback response */
             else if (response.repeat.counter >= response.repeat.limit) {
 
-                this.log('repeat', 'Maximum repeat limit for ' + query + ' reached or exceeded (' + response.repeat.counter + ' of ' + response.repeat.limit + ' max)');
+                if (!MINIFIED){
+                    this.log('repeat', 'Maximum repeat limit for ' + query + ' reached or exceeded (' + response.repeat.counter + ' of ' + response.repeat.limit + ' max)');
+                }
 
                 this.publish('Turbine|limit|exceeded|REPEAT',{
 
@@ -800,7 +852,9 @@
             from                                = from || this.queryOrder[numQueries-1];
             to                                  = to || this.queryOrder[0];
 
-            this.log('rewind', 'Rewinding from ' + from + ' to ' + to);
+            if (!MINIFIED){
+                this.log('rewind', 'Rewinding from ' + from + ' to ' + to);
+            }
 
             this.publish('Turbine|workflow|rewind',{
 
@@ -867,7 +921,9 @@
          */
         clear : function(query) {
 
-            this.log('clear', 'Clearing ' + query, null, 'DEBUG');
+            if (!MINIFIED){
+                this.log('clear', 'Clearing ' + query, null, 'DEBUG');
+            }
 
             this.clearQueryTimer(query);
 
@@ -926,7 +982,9 @@
          */
         onResponseTimeout : function(query,response) {
 
-            this.log('onResponseTimeout', 'The ' + query + ' response timed out.', response, 'WARN');
+            if (!MINIFIED){
+                this.log('onResponseTimeout', 'The ' + query + ' response timed out.', response, 'WARN');
+            }
 
             if (this.waitingFor) {
                 this.remove(this.waitingFor);
@@ -993,12 +1051,14 @@
 
             using.counter                       = (typeof response.repeat !== 'undefined') ? response.repeat.counter : 0;
 
-            this.log('publishAndWait', 'Publishing message and waiting for response', {
+            if (!MINIFIED){
+                this.log('publishAndWait', 'Publishing message and waiting for response', {
 
-                message                         : message,
-                using                           : using,
-                response                        : response
-            });
+                    message                         : message,
+                    using                           : using,
+                    response                        : response
+                });
+            }
 
             /* After message is published, callback must be called to process the rest of the response */
             var callback = function() {
@@ -1026,7 +1086,9 @@
                 using                           = this.utils.mergeObjects(using,this.workflow.config.always.using);
             }
 
-            this.log('getUsingObject', 'Getting using object', using, 'DEBUG');
+            if (!MINIFIED){
+                this.log('getUsingObject', 'Getting using object', using, 'DEBUG');
+            }
 
             return using;
         },
@@ -1039,7 +1101,9 @@
          */
         startDelayTimeout : function(query,response) {
 
-            this.log('startDelayTimeout',query + ' delay started. Delayed for ' + response.delay + ' ms', response);
+            if (!MINIFIED){
+                this.log('startDelayTimeout',query + ' delay started. Delayed for ' + response.delay + ' ms', response);
+            }
 
             this.publish('Turbine|delay|started',{
 
@@ -1064,7 +1128,9 @@
          */
         onDelayTimeout : function(query,response) {
 
-            this.log('onDelayTimeout',query + ' delay completed after ' + response.delay + ' ms', response);
+            if (!MINIFIED){
+                this.log('onDelayTimeout',query + ' delay completed after ' + response.delay + ' ms', response);
+            }
 
             this.publish('Turbine|delay|completed',{
 
@@ -1100,7 +1166,9 @@
          */
         importGlobalListener : function(listener,workflow) {
 
-            this.log('importGlobalListener', 'Importing global listener', listener, 'DEBUG');
+            if (!MINIFIED){
+                this.log('importGlobalListener', 'Importing global listener', listener, 'DEBUG');
+            }
 
             this.replaceShortcuts(listener,workflow);
             this.replaceVariables(listener,workflow);
@@ -1133,7 +1201,9 @@
             this.nextQueryObj                   = this.buildNextQueryObj(query,this.waitingFor);
             this.nextQuery                      = query;
 
-            this.log('queue', 'Queuing ' + query + ' query', this.waitingFor);
+            if (!MINIFIED){
+                this.log('queue', 'Queuing ' + query + ' query', this.waitingFor);
+            }
 
             this.publish('Turbine|workflow|waiting',{ waitingFor : this.waitingFor });
 
@@ -1215,7 +1285,9 @@
                 return null;
             }
 
-            this.log('handleIncomingMessage', 'Handling "'+message+'" message', payload);
+            if (!MINIFIED){
+                this.log('handleIncomingMessage', 'Handling "'+message+'" message', payload);
+            }
 
             if (this.waitingFor) {
 
@@ -1258,7 +1330,9 @@
                 }
             }
 
-            this.log('getNextQuery', 'Getting the next query: '+next, null, 'DEBUG');
+            if (!MINIFIED){
+                this.log('getNextQuery', 'Getting the next query: '+next, null, 'DEBUG');
+            }
 
             return next;
         },
@@ -1268,7 +1342,9 @@
          */
         clearTimers : function() {
 
-            this.log('clearTimers', 'Clearing all timers', this.timers, 'DEBUG');
+            if (!MINIFIED){
+                this.log('clearTimers', 'Clearing all timers', this.timers, 'DEBUG');
+            }
 
             this.clearAllQueryTimers();
             this.clearGlobalTimer();
@@ -1280,7 +1356,9 @@
          */
         clearAllQueryTimers : function() {
 
-            this.log('clearAllQueryTimers', 'Clearing all query timers', this.timers.queries, 'DEBUG');
+            if (!MINIFIED){
+                this.log('clearAllQueryTimers', 'Clearing all query timers', this.timers.queries, 'DEBUG');
+            }
 
             for (var query in this.timers.queries) {
 
@@ -1302,7 +1380,9 @@
 
             if (timerArray) {
 
-                this.log('clearQueryTimer', 'Clearing '+query+' query timer', this.timers.queries[query], 'DEBUG');
+                if (!MINIFIED){
+                    this.log('clearQueryTimer', 'Clearing '+query+' query timer', this.timers.queries[query], 'DEBUG');
+                }
 
                 for (var i=0;i<timerArray.length;i++) {
                     clearTimeout(timerArray[i]);
@@ -1323,7 +1403,9 @@
 
             if (this.timers.global !== null) {
 
-                this.log('clearGlobalTimer', 'Clearing global timer', this.timers.global, 'DEBUG');
+                if (!MINIFIED){
+                    this.log('clearGlobalTimer', 'Clearing global timer', this.timers.global, 'DEBUG');
+                }
 
                 clearTimeout(this.timers.global);
 
@@ -1338,7 +1420,9 @@
 
             if (this.timers.delay !== null) {
 
-                this.log('clearDelayTimer', 'Clearing delay timer', this.timers.delay, 'DEBUG');
+                if (!MINIFIED){
+                    this.log('clearDelayTimer', 'Clearing delay timer', this.timers.delay, 'DEBUG');
+                }
 
                 clearTimeout(this.timers.delay);
 
@@ -1362,7 +1446,9 @@
 
             this.clearGlobalTimer();
 
-            this.log('startGlobalTimeout', 'Starting global timer', this.workflow.config.always.timeout, 'DEBUG');
+            if (!MINIFIED){
+                this.log('startGlobalTimeout', 'Starting global timer', this.workflow.config.always.timeout, 'DEBUG');
+            }
 
             var timeout                         = this.getGlobalTimeout();
             var self                            = this;
@@ -1409,7 +1495,9 @@
                 this.remove(this.waitingFor);
             }
 
-            this.log('onGlobalTimeout', 'Turbine timed out on ' + query + ' query after ' + this.getGlobalTimeout() + ' ms',null,'ERROR');
+            if (!MINIFIED){
+                this.log('onGlobalTimeout', 'Turbine timed out on ' + query + ' query after ' + this.getGlobalTimeout() + ' ms',null,'ERROR');
+            }
 
             this.publish('Turbine|timer|expired|WORKFLOW_GLOBAL_TIMEOUT', {
 
@@ -1458,7 +1546,9 @@
          */
         setResponse : function(query,response) {
 
-            this.log('setResponse', 'Setting "' + query + '" response to ' + response);
+            if (!MINIFIED){
+                this.log('setResponse', 'Setting "' + query + '" response to ' + response);
+            }
 
             this.responses[query]               = response;
         },
@@ -1477,7 +1567,9 @@
                 this.responses[query]       = (this.responses[query]) ? 'yes' : 'no';
             }
 
-            this.log('getResponse',query + '?', this.responses[query]);
+            if (!MINIFIED){
+                this.log('getResponse',query + '?', this.responses[query]);
+            }
 
             return this.responses[query];
         },
@@ -1616,7 +1708,9 @@
 
                         if (source[thisItem]) {
 
-                            this.log('replace', 'Replacing ' + thisItem + ' ' + type + ' with', source[thisItem], 'DEBUG');
+                            if (!MINIFIED){
+                                this.log('replace', 'Replacing ' + thisItem + ' ' + type + ' with', source[thisItem], 'DEBUG');
+                            }
 
                             target[item]             = source[thisItem];
                         }
