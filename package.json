@@ -1,0 +1,47 @@
+{
+    "name"                      : "turbine.js",
+    "version"                   : "0.2.1",
+    "description"               : "Turbine.js is an event-driven JavaScript Workflow Engine.",
+    "keywords"                  : ["workflow", "control","flow","state","machine"],
+    "categories"                : ["Data","Events"],
+    "author": {
+        "name"                  : "Warren Benedetto",
+        "url"                   : "http://www.transfusionmedia.com"
+    },
+    "maintainers" : [
+        {
+            "name"              : "Warren Benedetto",
+            "email"             : "warren@transfusionmedia.com",
+            "web"               : "http://www.transfusionmedia.com"
+        }
+    ],
+    "contributors"              : [],
+    "bugs" : {
+        "web"                   : "https://github.com/wmbenedetto/turbine.js/issues"
+    },
+    "licenses" : [
+        {
+            "type"              : "MIT",
+            "url"               : "https://github.com/wmbenedetto/turbine.js#mit-license"
+        }
+    ],
+    "repositories" : [
+        {
+            "type"              : "git",
+            "url"               : "https://github.com/wmbenedetto/turbine.js.git"
+        }
+    ],
+    "dependencies"              : [],
+    "homepage"                  : "https://github.com/wmbenedetto/turbine.js",
+    "github"                    : "https://github.com/wmbenedetto/turbine.js",
+    "main"                      : "src/Turbine.js",
+
+    "jam" : {
+
+        "main"                  : "src/Turbine.js",
+
+        "include": [
+            "src/Turbine.js"
+        ]
+    }
+}

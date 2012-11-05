@@ -1792,6 +1792,17 @@ if (typeof MINIFIED === 'undefined'){
         }
     };
 
-    window.Turbine = Turbine;
+    /* If RequireJS define() is present, use it to export Turbine */
+    if (typeof define === "function") {
+
+        define(function() {
+            return Turbine;
+        });
+    }
+    /* Otherwise, add Turbine to global namespace as Ron */
+    else {
+
+        window.Turbine = Turbine;
+    }
 
 }(window));
