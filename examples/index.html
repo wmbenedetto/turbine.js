@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Turbine.js</title>
+    <link type="text/css" rel="stylesheet" href="assets/bootstrap/bootstrap.min.css">
+    <script language="JavaScript" type="text/javascript" src="assets/jquery.min.js"></script>
+    <script language="JavaScript" type="text/javascript" src="assets/bootstrap/bootstrap.min.js"></script>
+    <script language="JavaScript" type="text/javascript" src="../src/Turbine.js"></script>
+    <script language="JavaScript" type="text/javascript">
+
+        $(document).bind('Turbine|testing|started', function(e,payload) {
+            console.error('--------> Turbine|testing|started',payload);
+        });
+
+
+    //                log              : API.Log.info.bind(API.Log),
+    //                publish : function(message,payload,callback){
+    //
+    //                    if (typeof message === 'string' && message.indexOf('|') > -1){
+    //                        message                         = message.replace(/\|/g,'.');
+    //                    }
+    //
+    //                    API.Message.publish({
+    //                        message                         : message,
+    //                        payload                         : payload || {},
+    //                        onComplete                      : callback || function(){}
+    //                    });
+    //                },
+    //
+    //                listen : function(message,handler){
+    //
+    //                    API.Message.listen(message,function(message,payload){
+    //                        handler(message.serialize(),payload);
+    //                    });
+    //                },
+    //
+    //                remove : function(message){
+    //                    API.Message.stop(message);
+    //                },
+    //
+    //                report : function(handle,message,payload){
+    //                    console.error('['+handle+'] '+message);
+    //                },
+    //
+    //                compare : function(msg1,msg2){
+    //                    return API.Message.compare(msg1,msg2);
+    //                },
+        $(document).ready(function() {
+
+            var initObj = {
+
+                name : 'Turbine1',
+                logLevel : 'DEBUG',
+
+                queries : {
+
+                    isAvailable : function(){
+                        return true;
+                    }
+                },
+
+                resets : {
+
+                    isAvailable : function(){
+                        return true;
+                    }
+                },
+
+                responses : {
+
+                    isAvailable : true
+                },
+
+                workflow : {
+
+                     config : {
+
+                        shortcuts : {
+
+                        },
+
+                        variables : {
+
+                        },
+
+                        always : {
+
+                            timeout : {
+                                after                           : 300000,
+                                publish : {
+                                    message                     : "Turbine|start|transition",
+                                    using : {
+                                        module                  : "Status",
+                                        view                    : "Fail",
+                                        content                 : "fail.generalError",
+                                        download 		        : true,
+                                        tryAgain                : true
+                                    }
+                                },
+                                then                            : "done"
+                            }
+                        }
+                    },
+
+                    queries : {
+
+                        isAvailable : {
+                            yes : {
+                                publish : {
+                                    message : ["Turbine|testing|started","Turbine|foo|started"],
+                                    using : {
+                                        foo : 'bar'
+                                    }
+                                },
+                                waitFor : "UI|button|clicked",
+                                repeat : {
+                                    limit : 5,
+                                    then : 'done'
+                                }
+                            },
+                            no : {
+                                then : 'done'
+                            }
+                        }
+                    },
+
+                    mixins : {
+
+                    }
+                }
+            };
+
+            window.turbine = new Turbine(initObj);
+            turbine.start();
+        });
+    </script>
+</head>
+<body>
+
+</body>
+</html>

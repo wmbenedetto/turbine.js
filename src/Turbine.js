@@ -50,14 +50,17 @@ if (typeof MINIFIED === 'undefined'){
      *
      * @see https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/Function/bind
      */
-    Function.prototype.bind = function(scope) {
+    if (typeof Function.prototype.bind !== 'function'){
 
-        var self                                = this;
+        Function.prototype.bind = function(scope) {
 
-        return function() {
-            return self.apply(scope,arguments);
-        }
-    };
+            var self                            = this;
+
+            return function() {
+                return self.apply(scope,arguments);
+            }
+        };
+    }
 
     /**
      * Initializes Turbine via initObj object.
@@ -496,7 +499,7 @@ if (typeof MINIFIED === 'undefined'){
 
             for (var i=0;i<message.length;i++) {
 
-                $(this).bind(message[i],function(e) {
+                $(this).on(message[i],function(e) {
                     handler(e.type, e.data);
                 });
             }
