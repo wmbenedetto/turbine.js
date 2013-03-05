@@ -3,7 +3,6 @@ var cart = {
     items                               : {},
     totalItems                          : 0,
     totalPrice                          : 0,
-    loggedIn                            : false,
 
     /**
      * Adds item to cart
@@ -42,37 +41,6 @@ var cart = {
         if (this.totalItems === 0){
             this.showEmptyCartMsg();
         }
-    },
-
-    /**
-     * Simulates log in
-     */
-    logIn : function(){
-
-        this.loggedIn              = true;
-
-        $('#login-button').hide();
-        $('#logout-button').show();
-    },
-
-    /**
-     * Simulates log out
-     */
-    logOut : function(){
-
-        this.loggedIn              = false;
-
-        $('#login-button').show();
-        $('#logout-button').hide();
-    },
-
-    /**
-     * Checks whether user is logged in
-     *
-     * @return {Boolean}
-     */
-    isLoggedIn : function(){
-        return this.loggedIn === true;
     },
 
     /**
@@ -169,6 +137,78 @@ var webapi = {
     }
 };
 
+var app = {
+
+    loggedIn                    : false,
+
+    init : function(){
+
+        window.turbine = new Turbine(workflow);
+
+        $(turbine).bind('Cart|issue|detected',function(event,payload){
+
+            if (payload.content){
+                $('#checkout-alert .msg').html(content[payload.content]);
+            }
+
+            $('#checkout-alert').show().delay(3000).fadeOut('fast');
+        });
+
+        $(turbine).bind('Cart|checkout|complete',function(event,payload){
+
+            if (payload.content){
+                $('#checkout-success .msg').html(content[payload.content]);
+            }
+
+            $('#checkout-success').show().delay(3000).fadeOut('fast');
+        });
+
+        $(turbine).bind('Cart|console|added',function(event,payload){
+
+            if (payload.content){
+                $('#checkout-info .msg').html(content[payload.content]);
+            }
+
+            if (payload.discount){
+                cart.applyDiscount('nba2k',payload.discount);
+            }
+
+            $('#checkout-info').show().delay(3000).fadeOut('fast');
+        });
+    },
+
+    /**
+     * Simulates log in
+     */
+    logIn : function(){
+
+        this.loggedIn              = true;
+
+        $('#login-button').hide();
+        $('#logout-button').show();
+    },
+
+    /**
+     * Simulates log out
+     */
+    logOut : function(){
+
+        this.loggedIn              = false;
+
+        $('#login-button').show();
+        $('#logout-button').hide();
+    },
+
+    /**
+     * Checks whether user is logged in
+     *
+     * @return {Boolean}
+     */
+    isLoggedIn : function(){
+        return this.loggedIn === true;
+    }
+};
+
 var workflow = {
 
     name                            : 'TurbineExample',
@@ -177,7 +217,7 @@ var workflow = {
     queries : {
 
         isCartEmpty                 : cart.isCartEmpty.bind(cart),
-        isLoggedIn                  : cart.isLoggedIn.bind(cart),
+        isLoggedIn                  : app.isLoggedIn.bind(app),
         getsSpecialOffer            : cart.getsSpecialOffer.bind(cart)
     },
 
@@ -290,44 +330,5 @@ var content = {
     success             : 'Your purchase is complete',
     specialOffer        : 'You qualify for a special offer!'
 
-};
-
-var app = {
-
-    init : function(){
-
-        window.turbine = new Turbine(workflow);
-
-        $(turbine).bind('Cart|issue|detected',function(event,payload){
-
-            if (payload.content){
-                $('#checkout-alert .msg').html(content[payload.content]);
-            }
-
-            $('#checkout-alert').show().delay(3000).fadeOut('fast');
-        });
-
-        $(turbine).bind('Cart|checkout|complete',function(event,payload){
-
-            if (payload.content){
-                $('#checkout-success .msg').html(content[payload.content]);
-            }
-
-            $('#checkout-success').show().delay(3000).fadeOut('fast');
-        });
-
-        $(turbine).bind('Cart|console|added',function(event,payload){
-
-            if (payload.content){
-                $('#checkout-info .msg').html(content[payload.content]);
-            }
-
-            if (payload.discount){
-                cart.applyDiscount('nba2k',payload.discount);
-            }
-
-            $('#checkout-info').show().delay(3000).fadeOut('fast');
-        });
-    }
 };
 
