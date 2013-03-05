@@ -643,6 +643,7 @@ if (typeof MINIFIED === 'undefined'){
          *
          * @param query The query containing the response to process
          * @param response The response to process
+         * @param preventGlobalTimeout If true, global timeout will not be started
          */
         processResponse : function(query,response,preventGlobalTimeout) {
 
