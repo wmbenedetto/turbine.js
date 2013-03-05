@@ -34,7 +34,7 @@ if (typeof MINIFIED === 'undefined'){
  */
 (function(window,undefined) {
 
-    var $                                       = window.jQuery  || null;
+    var $                                       = window.jQuery || null;
 
     if (!MINIFIED){
 
