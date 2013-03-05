@@ -10,131 +10,69 @@
     <script language="JavaScript" type="text/javascript" src="../src/Turbine.js"></script>
     <script language="JavaScript" type="text/javascript">
 
-        $(document).bind('Turbine|testing|started', function(e,payload) {
-            console.error('--------> Turbine|testing|started',payload);
-        });
-
-
-    //                log              : API.Log.info.bind(API.Log),
-    //                publish : function(message,payload,callback){
-    //
-    //                    if (typeof message === 'string' && message.indexOf('|') > -1){
-    //                        message                         = message.replace(/\|/g,'.');
-    //                    }
-    //
-    //                    API.Message.publish({
-    //                        message                         : message,
-    //                        payload                         : payload || {},
-    //                        onComplete                      : callback || function(){}
-    //                    });
-    //                },
-    //
-    //                listen : function(message,handler){
-    //
-    //                    API.Message.listen(message,function(message,payload){
-    //                        handler(message.serialize(),payload);
-    //                    });
-    //                },
-    //
-    //                remove : function(message){
-    //                    API.Message.stop(message);
-    //                },
-    //
-    //                report : function(handle,message,payload){
-    //                    console.error('['+handle+'] '+message);
-    //                },
-    //
-    //                compare : function(msg1,msg2){
-    //                    return API.Message.compare(msg1,msg2);
-    //                },
         $(document).ready(function() {
 
-            var initObj = {
+            /* App defined in assets/example.js (included above) */
+            app.init();
 
-                name : 'Turbine1',
-                logLevel : 'DEBUG',
+            $('.add-to-cart').click(function(){
 
-                queries : {
+                var guid                    = ('' + Math.random() + new Date().getTime()).substr(10);
+                var itemType                  = $(this).attr('data-item');
 
-                    isAvailable : function(){
-                        return true;
-                    }
-                },
+                cart.add(itemType, guid);
 
-                resets : {
+                $(turbine).trigger('Cart|item|added');
+            });
 
-                    isAvailable : function(){
-                        return true;
-                    }
-                },
+            $('#login-button').click(function(){
+                cart.logIn();
+            });
 
-                responses : {
+            $('#logout-button').click(function(){
+                cart.logOut();
+            });
 
-                    isAvailable : true
-                },
+            $('#checkout-button').click(function(){
 
-                workflow : {
-
-                     config : {
-
-                        shortcuts : {
-
-                        },
-
-                        variables : {
-
-                        },
-
-                        always : {
-
-                            timeout : {
-                                after                           : 300000,
-                                publish : {
-                                    message                     : "Turbine|start|transition",
-                                    using : {
-                                        module                  : "Status",
-                                        view                    : "Fail",
-                                        content                 : "fail.generalError",
-                                        download 		        : true,
-                                        tryAgain                : true
-                                    }
-                                },
-                                then                            : "done"
-                            }
-                        }
-                    },
-
-                    queries : {
-
-                        isAvailable : {
-                            yes : {
-                                publish : {
-                                    message : ["Turbine|testing|started","Turbine|foo|started"],
-                                    using : {
-                                        foo : 'bar'
-                                    }
-                                },
-                                waitFor : "UI|button|clicked",
-                                repeat : {
-                                    limit : 5,
-                                    then : 'done'
-                                }
-                            },
-                            no : {
-                                then : 'done'
-                            }
-                        }
-                    },
-
-                    mixins : {
-
-                    }
+                if (!turbine.isStarted()){
+                    turbine.start();
                 }
-            };
+            });
+});
 
-            window.turbine = new Turbine(initObj);
-            turbine.start();
-        });
+//                log              : API.Log.info.bind(API.Log),
+//                publish : function(message,payload,callback){
+//
+//                    if (typeof message === 'string' && message.indexOf('|') > -1){
+//                        message                         = message.replace(/\|/g,'.');
+//                    }
+//
+//                    API.Message.publish({
+//                        message                         : message,
+//                        payload                         : payload || {},
+//                        onComplete                      : callback || function(){}
+//                    });
+//                },
+//
+//                listen : function(message,handler){
+//
+//                    API.Message.listen(message,function(message,payload){
+//                        handler(message.serialize(),payload);
+//                    });
+//                },
+//
+//                remove : function(message){
+//                    API.Message.stop(message);
+//                },
+//
+//                report : function(handle,message,payload){
+//                    console.error('['+handle+'] '+message);
+//                },
+//
+//                compare : function(msg1,msg2){
+//                    return API.Message.compare(msg1,msg2);
+//                },
     </script>
 </head>
 <body>
@@ -144,7 +82,8 @@
                 <h1>Turbine example</h1>
             </section>
             <section class="right-col">
-                <button type="button" class="btn btn-mini">Log in</button>
+                <button id="login-button" type="button" class="btn btn-mini">Log in</button>
+                <button id="logout-button" type="button" class="btn btn-inverse btn-mini">Log out</button>
            </section>
         </header>
         <section class="left-col">
@@ -194,6 +133,18 @@
             </div>
             <div id="checkout">
                 <button id="checkout-button" type="button" class="btn btn-primary">Checkout</button>
+            </div>
+            <div id="checkout-alert" class="alert alert-error">
+              <strong>Uh oh!</strong>
+                <span class="msg">Something went wrong.</span>
+            </div>
+            <div id="checkout-success" class="alert alert-success">
+              <strong>SUCCESS!</strong>
+                <span class="msg">It worked!</span>
+            </div>
+            <div id="checkout-info" class="alert alert-info">
+              <strong>Hey there!</strong>
+                <span class="msg">Here's a message.</span>
             </div>
         </section>
     </div>

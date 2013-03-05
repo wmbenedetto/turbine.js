@@ -3,6 +3,7 @@ var cart = {
     items                               : {},
     totalItems                          : 0,
     totalPrice                          : 0,
+    loggedIn                            : false,
 
     /**
      * Adds item to cart
@@ -22,9 +23,6 @@ var cart = {
         $('#remove-'+guid).click(function(){
             cart.remove(itemType,guid);
         });
-
-
-        console.log(cart.items);
     },
 
     /**
@@ -44,8 +42,56 @@ var cart = {
         if (this.totalItems === 0){
             this.showEmptyCartMsg();
         }
+    },
 
-        console.log(cart.items);
+    /**
+     * Simulates log in
+     */
+    logIn : function(){
+
+        this.loggedIn              = true;
+
+        $('#login-button').hide();
+        $('#logout-button').show();
+    },
+
+    /**
+     * Simulates log out
+     */
+    logOut : function(){
+
+        this.loggedIn              = false;
+
+        $('#login-button').show();
+        $('#logout-button').hide();
+    },
+
+    /**
+     * Checks whether user is logged in
+     *
+     * @return {Boolean}
+     */
+    isLoggedIn : function(){
+        return this.loggedIn === true;
+    },
+
+    /**
+     * Checks whether cart is empty
+     *
+     * @return {Boolean}
+     */
+    isCartEmpty : function(){
+        return this.totalItems === 0;
+    },
+
+    /**
+     * Checks to see if user qualifies for special offer
+     *
+     * @return {Boolean}
+     */
+    getsSpecialOffer : function(){
+        return (typeof this.items.ps3 === 'number' && this.items.ps3 > 0) &&
+               (typeof this.items.nba2k === 'number' && this.items.nba2k > 0);
     },
 
     /**
@@ -63,7 +109,7 @@ var cart = {
 
         var cartRow                 = '<tr id="guid-' + guid + '">';
         cartRow                    += '<td class="item">' + itemName + '</td>';
-        cartRow                    += '<td class="price">' + itemPrice + '</td>';
+        cartRow                    += '<td class="' + itemType + ' price" data-price="'+itemPrice+'">' + itemPrice + '</td>';
         cartRow                    += '<td><a id="remove-' + guid + '" class="remove-from-cart">Remove</a></td>';
         cartRow                    += '</tr>';
 
@@ -79,7 +125,7 @@ var cart = {
 
         $('#cart td.price').each(function(i,el){
 
-            var priceString         = $(el).html();
+            var priceString         = $(el).attr('data-price');
 
             totalPrice             += parseFloat(priceString.substr(1));
             totalPrice              = Math.round(totalPrice * 100) / 100;
@@ -91,6 +137,24 @@ var cart = {
     },
 
     /**
+     * Applies discount to item
+     *
+     * @param itemType The type of item being added
+     * @param discount The percentage by which to discount the price
+     */
+    applyDiscount : function(itemType,discount){
+
+        var $price                  = $('#cart .'+itemType+'.price');
+        var priceString             = $price.attr('data-price');
+        var priceNum                = parseFloat(priceString.substr(1));
+        var newPrice                = priceNum * (100-discount)/100;
+
+        $price.html('<span class="orig-price">'+priceString+'</span> <span class="new-price">$'+newPrice.toFixed(2)+'</span>');
+
+        this.updateTotal();
+    },
+
+    /**
      * Shows message when cart is empty
      */
     showEmptyCartMsg : function(){
@@ -98,15 +162,172 @@ var cart = {
     }
 };
 
-$(document).ready(function(){
+var webapi = {
 
-    $('.add-to-cart').click(function(){
+    getSpecialOfferDiscount : function(){
+        return 10;
+    }
+};
 
-        var guid                    = ('' + Math.random() + new Date().getTime()).substr(10);
-        var itemType                  = $(this).attr('data-item');
+var workflow = {
 
-        cart.add(itemType, guid);
-    });
+    name                            : 'TurbineExample',
+    logLevel                        : 'INFO',
 
+    queries : {
 
-});
+        isCartEmpty                 : cart.isCartEmpty.bind(cart),
+        isLoggedIn                  : cart.isLoggedIn.bind(cart),
+        getsSpecialOffer            : cart.getsSpecialOffer.bind(cart)
+    },
+
+    resets : {
+
+    },
+
+    responses : {
+
+    },
+
+    workflow : {
+
+         config : {
+
+            shortcuts : {
+            },
+
+            variables : {
+
+            },
+
+            always : {
+
+                timeout : {
+                    after                           : 300000,
+                    publish : {
+                        message                     : "WORKFLOW_GLOBAL_TIMEOUT"
+                    },
+                    then                            : "stop."
+                },
+
+                waitFor : [
+                    {
+                        "waitFor"                   : "Cart|item|added",
+                        "then"                      : "getsSpecialOffer"
+                    }
+                ]
+            }
+        },
+
+        queries : {
+
+            isLoggedIn : {
+
+                yes : {
+                    then                            : 'isCartEmpty'
+                },
+                no : {
+                    publish : {
+                        message                     : 'Cart|issue|detected',
+                        using : {
+                            content                 : 'loginRequired'
+                        }
+                    },
+                    then                            : 'stop.'
+                }
+            },
+
+            isCartEmpty : {
+                yes : {
+                    publish : {
+                        message                     : 'Cart|issue|detected',
+                        using : {
+                            content                 : 'emptyCart'
+                        }
+                    },
+                    then                            : 'stop.'
+                },
+                no                                  : '+checkoutComplete'
+            },
+
+            getsSpecialOffer : {
+                yes : {
+                    publish : {
+                        message                     : 'Cart|console|added',
+                        using : {
+                            content                 : 'specialOffer',
+                            discount                : webapi.getSpecialOfferDiscount()
+                        }
+                    },
+                    then                            : 'stop.'
+                },
+                no : {
+                    "waitFor"                       : "Cart|item|added",
+                    "then"                          : "getsSpecialOffer"
+                }
+            }
+        },
+
+        mixins : {
+
+            '+checkoutComplete' : {
+                publish : {
+                    message                         : 'Cart|checkout|complete',
+                    using : {
+                        content                     : 'success'
+                    }
+                },
+                then                                : 'stop.'
+            }
+        }
+    }
+};
+
+var content = {
+
+    emptyCart           : 'You must add items to your cart before checking out',
+    loginRequired       : 'You must be logged in before you can check out. Please click the Log In button above.',
+    success             : 'Your purchase is complete',
+    specialOffer        : 'You qualify for a special offer!'
+
+};
+
+var app = {
+
+    init : function(){
+
+        window.turbine = new Turbine(workflow);
+
+        $(turbine).bind('Cart|issue|detected',function(event,payload){
+
+            if (payload.content){
+                $('#checkout-alert .msg').html(content[payload.content]);
+            }
+
+            $('#checkout-alert').show().delay(3000).fadeOut('fast');
+        });
+
+        $(turbine).bind('Cart|checkout|complete',function(event,payload){
+
+            if (payload.content){
+                $('#checkout-success .msg').html(content[payload.content]);
+            }
+
+            $('#checkout-success').show().delay(3000).fadeOut('fast');
+        });
+
+        $(turbine).bind('Cart|console|added',function(event,payload){
+
+            if (payload.content){
+                $('#checkout-info .msg').html(content[payload.content]);
+            }
+
+            if (payload.discount){
+                cart.applyDiscount('nba2k',payload.discount);
+            }
+
+            $('#checkout-info').show().delay(3000).fadeOut('fast');
+        });
+    }
+};
+

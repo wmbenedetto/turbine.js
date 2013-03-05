@@ -97,7 +97,8 @@ if (typeof MINIFIED === 'undefined'){
         this.queryOrder                         = [];
         this.resets                             = {};
         this.responses                          = {};
-        this.stopped                            = false;
+        this.started                            = false;
+        this.killed                             = false;
         this.waitingFor                         = null;
         this.workflow                           = {};
 
@@ -128,7 +129,8 @@ if (typeof MINIFIED === 'undefined'){
         queryOrder                              : null,
         resets                                  : null,
         responses                               : null,
-        stopped                                 : null,
+        started                                 : null,
+        killed                                  : null,
         timers                                  : null,
         waitingFor                              : null,
         workflow                                : null,
@@ -147,7 +149,8 @@ if (typeof MINIFIED === 'undefined'){
                 getConfigVar                    : this.getConfigVar.bind(this),
                 setResponse                     : this.setResponse.bind(this),
                 start                           : this.start.bind(this),
-                stop                            : this.stop.bind(this)
+                stop                            : this.stop.bind(this),
+                isStarted                       : this.isStarted.bind(this)
             }
         },
 
@@ -159,7 +162,7 @@ if (typeof MINIFIED === 'undefined'){
         importFunctions : function(initObj) {
 
             if (!MINIFIED){
-                this.log('importFunctions', 'Importing functions');
+                this.log('importFunctions', 'Importing functions', null, 'DEBUG');
             }
 
             var thisFunc                        = null;
@@ -200,7 +203,7 @@ if (typeof MINIFIED === 'undefined'){
         importObjects : function(initObj) {
 
             if (!MINIFIED){
-                this.log('importObjects', 'Importing objects');
+                this.log('importObjects', 'Importing objects', null, 'DEBUG');
             }
 
             var thisObj                         = null;
@@ -230,7 +233,7 @@ if (typeof MINIFIED === 'undefined'){
             if (this.utils.isObjLiteral(initObj.workflow)) {
 
                 if (!MINIFIED){
-                    this.log('importWorkflow', 'Importing workflow');
+                    this.log('importWorkflow', 'Importing workflow', null, 'DEBUG');
                 }
 
                 this.workflow                       = initObj.workflow || {};
@@ -266,7 +269,7 @@ if (typeof MINIFIED === 'undefined'){
         importConfig : function(workflow) {
 
             if (!MINIFIED){
-                this.log('importConfig', 'Importing config', workflow);
+                this.log('importConfig', 'Importing config', workflow, 'DEBUG');
             }
 
             var self                            = this;
@@ -299,7 +302,7 @@ if (typeof MINIFIED === 'undefined'){
         importQueries : function(workflow) {
 
             if (!MINIFIED){
-                this.log('importQueries', 'Importing queries', workflow);
+                this.log('importQueries', 'Importing queries', workflow, 'DEBUG');
             }
 
             var totalQueries                    = 0;
@@ -461,7 +464,9 @@ if (typeof MINIFIED === 'undefined'){
         publish : function(message,payload,callback) {
 
             if (!MINIFIED){
-                this.log('publish', 'Publishing message:', message);
+                if (message.indexOf('Turbine')< 0){
+                    this.log('publish', 'Publishing message:', message);
+                }
             }
 
             if (typeof message === 'string') {
@@ -549,13 +554,22 @@ if (typeof MINIFIED === 'undefined'){
          */
         start : function() {
 
+            if (this.isKilled()){
+
+                if (!MINIFIED){
+                    this.log('start', 'Cannot start Turbine. It has already been killed.', null, 'ERROR');
+                }
+
+                return null;
+            }
+
             if (!MINIFIED){
                 this.log('start', 'Starting Turbine');
             }
 
             this.publish('Turbine|workflow|started');
 
-            this.stopped                        = false;
+            this.started                        = true;
 
             this.next();
         },
@@ -569,7 +583,7 @@ if (typeof MINIFIED === 'undefined'){
                 this.log('stop', 'Stopping Turbine');
             }
 
-            this.stopped                        = true;
+            this.started                        = false;
 
             this.rewind();
 
@@ -577,16 +591,33 @@ if (typeof MINIFIED === 'undefined'){
         },
 
         /**
+         * Kills Turbine (It is stopped and can't be restarted)
+         */
+        kill : function(){
+
+            if (!MINIFIED){
+                this.log('kill', 'Killing Turbine');
+            }
+
+            this.started                        = false;
+            this.killed                         = true;
+
+            this.rewind();
+
+            this.publish('Turbine|workflow|killed');
+        },
+
+        /**
          * Shortcut for executing next query
          */
         next : function() {
 
-            if (this.isStopped() || this.nextQuery === null) {
+            if (this.isKilled() || this.nextQuery === null) {
                 return null;
             }
 
             if (!MINIFIED){
-                this.log('next', 'Executing next workflow query:', this.nextQuery);
+                this.log('next', 'Executing next workflow query:', this.nextQuery, 'DEBUG');
             }
 
             this.exec(this.nextQuery);
@@ -601,11 +632,16 @@ if (typeof MINIFIED === 'undefined'){
 
             this.clearTimers();
 
-            if (this.isStopQuery(query)) {
-                this.stop();
+            if (this.isKillQuery(query)) {
+                this.kill();
             }
 
-            if (this.isStopped()) {
+            if (this.isStopQuery(query)) {
+                this.stop();
+                return null;
+            }
+
+            if (this.isKilled()) {
                 return null;
             }
 
@@ -631,7 +667,7 @@ if (typeof MINIFIED === 'undefined'){
             }
 
             if (!MINIFIED){
-                this.log('exec', 'Executing the ' + responseName + ' response to the ' + query + ' query');
+                this.log('exec', 'Executing the ' + responseName + ' response to the ' + query + ' query', null, 'DEBUG');
             }
 
             this.publish('Turbine|query|executed',{
@@ -657,12 +693,12 @@ if (typeof MINIFIED === 'undefined'){
 
             this.clearTimers();
 
-            if (this.isStopped()) {
+            if (this.isKilled()) {
                 return null;
             }
 
             if (!MINIFIED){
-                this.log('processResponse', 'Processing response', response);
+                this.log('processResponse', 'Processing response to '+query+' query', response, 'DEBUG');
             }
 
             if (!preventGlobalTimeout) {
@@ -862,7 +898,7 @@ if (typeof MINIFIED === 'undefined'){
             to                                  = to || this.queryOrder[0];
 
             if (!MINIFIED){
-                this.log('rewind', 'Rewinding from ' + from + ' to ' + to);
+                this.log('rewind', 'Rewinding from ' + from + ' to ' + to, null, 'DEBUG');
             }
 
             this.publish('Turbine|workflow|rewind',{
@@ -888,7 +924,7 @@ if (typeof MINIFIED === 'undefined'){
                 }
             }
 
-            if (!this.isStopped()) {
+            if (!this.isKilled()){
                 this.queue(to,eventHandle);
             }
         },
@@ -1202,13 +1238,14 @@ if (typeof MINIFIED === 'undefined'){
             this.nextQueryObj                   = this.buildNextQueryObj(query,this.waitingFor);
             this.nextQuery                      = query;
 
-            if (!MINIFIED){
-                this.log('queue', 'Queuing ' + query + ' query', this.waitingFor);
-            }
-
             this.publish('Turbine|workflow|waiting',{ waitingFor : this.waitingFor });
 
             this.listen(this.waitingFor,this.handleIncomingMessage.bind(this));
+
+            if (!MINIFIED){
+                this.log('queue', 'Waiting for', this.waitingFor);
+                this.log('queue', 'Queuing ' + this.nextQueryObj[this.waitingFor] + ' query');
+            }
         },
 
         /**
@@ -1282,7 +1319,7 @@ if (typeof MINIFIED === 'undefined'){
          */
         handleIncomingMessage : function(message,payload) {
 
-            if (this.isStopped()) {
+            if (this.isKilled()) {
                 return null;
             }
 
@@ -1523,10 +1560,26 @@ if (typeof MINIFIED === 'undefined'){
         },
 
         /**
-         * Checks whether the workflow is stopped
+         * Checks whether Turbine has been killed
+         */
+        isKilled : function() {
+            return this.killed === true;
+        },
+
+        /**
+         * Checks whether Turbine is stopped
          */
         isStopped : function() {
-            return this.stopped === true;
+            return this.started !== true;
+        },
+
+        /**
+         * Checks whether Turbine is started
+         *
+         * @return {Boolean}
+         */
+        isStarted : function(){
+            return this.started === true;
         },
 
         /**
@@ -1536,7 +1589,17 @@ if (typeof MINIFIED === 'undefined'){
          * @param query The query to check
          */
         isStopQuery : function(query) {
-            return query === 'done'
+            return query === 'stop.'
+        },
+
+        /**
+         * Checks whether the query is a kill query, meaning
+         * the workflow should be killed when it is encountered.
+         *
+         * @param query The query to check
+         */
+        isKillQuery : function(query) {
+            return query === 'kill!'
         },
 
         /**
@@ -1657,12 +1720,12 @@ if (typeof MINIFIED === 'undefined'){
          * the same object over and over.
          *
          * Mixins are defined in their own object in the workflow. The mixin name is always
-         * prepended with an exclamation point, and the value is always a full response object.
+         * prepended with a plus sign, and the value is always a full response object.
          *
          * For example:
          *
          * "mixins" : {
-         *     "!wrongPassword" : {
+         *     "+wrongPassword" : {
          *         "publish"               : "UI.fail.show.PASSWORD_INCORRECT",
          *         "then"                  : "end"
          *     }
@@ -1675,7 +1738,7 @@ if (typeof MINIFIED === 'undefined'){
          *         "yes" : {
          *             "then"               : "isCreditCardOnFile"
          *         },
-         *         "no"                     : "!wrongPassword" // <-- This is the mixin
+         *         "no"                     : "+wrongPassword" // <-- This is the mixin
          *     }
          * }
          *
@@ -1683,7 +1746,7 @@ if (typeof MINIFIED === 'undefined'){
          * @param workflow The workflow being imported
          */
         replaceMixins : function(query,workflow) {
-            this.replace(workflow.queries[query],workflow.mixins,'!',true,'mixin');
+            this.replace(workflow.queries[query],workflow.mixins,'+',true,'mixin');
         },
 
         /**
@@ -1692,7 +1755,7 @@ if (typeof MINIFIED === 'undefined'){
          *
          * @param target The target object in which the replacements should be made
          * @param source The source object containing the values that will be inserted
-         * @param prepend The string prepended to they key (i.e. $foo, @bar, !baz)
+         * @param prepend The string prepended to they key (i.e. $foo, @bar, +baz)
          * @param recursive If true, replacements will be done recursively in all nested objects
          * @param type The type of replacement (mixin, variable, shortcut)
          */

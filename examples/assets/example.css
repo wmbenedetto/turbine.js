@@ -49,3 +49,26 @@ td.price {
     float:right;
     margin-top:10px;
 }
+
+#checkout-alert,
+#checkout-info,
+#checkout-success {
+    clear:right;
+    display:none;
+    float:right;
+    margin-top:10px;
+}
+
+#logout-button {
+    display:none;
+}
+
+.new-price {
+    color:green;
+    font-weight:bold;
+}
+
+.orig-price {
+    text-decoration:line-through;
+    color:#cc0000;
+}
