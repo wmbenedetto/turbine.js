@@ -3,8 +3,10 @@
 <head>
 <title>Turbine.js</title>
     <link type="text/css" rel="stylesheet" href="assets/bootstrap/bootstrap.min.css">
+    <link type="text/css" rel="stylesheet" href="assets/example.css">
     <script language="JavaScript" type="text/javascript" src="assets/jquery.min.js"></script>
     <script language="JavaScript" type="text/javascript" src="assets/bootstrap/bootstrap.min.js"></script>
+    <script language="JavaScript" type="text/javascript" src="assets/example.js"></script>
     <script language="JavaScript" type="text/javascript" src="../src/Turbine.js"></script>
     <script language="JavaScript" type="text/javascript">
 
@@ -136,6 +138,64 @@
     </script>
 </head>
 <body>
-
+    <div id="wrapper">
+        <header>
+            <section class="left-col">
+                <h1>Turbine example</h1>
+            </section>
+            <section class="right-col">
+                <button type="button" class="btn btn-mini">Log in</button>
+           </section>
+        </header>
+        <section class="left-col">
+            <h3>Products</h3>
+            <table class="table table-striped table-bordered">
+                <tr>
+                    <th>Item</th>
+                    <th>Price</th>
+                    <th>Action</th>
+                </tr>
+                <tr id="ps3">
+                    <td class="item">Sony Playstation 3 Slim 160GB</td>
+                    <td class="price">$289.98</td>
+                    <td><a class="add-to-cart" data-item="ps3">Add to cart</a></td>
+                </tr>
+                <tr id="dualshock">
+                    <td class="item">PlayStation 3 DualShock 3 Wireless Controller (Black)</td>
+                    <td class="price">$44.99</td>
+                    <td><a class="add-to-cart" data-item="dualshock">Add to cart</a></td>
+                </tr>
+                <tr id="charger">
+                    <td class="item">PS3 DualShock 3 Charging Station</td>
+                    <td class="price">$26.99</td>
+                    <td><a class="add-to-cart" data-item="charger">Add to cart</a></td>
+                </tr>
+                <tr id="nba2k">
+                    <td class="item">NBA 2K13 (PlayStation 3)</td>
+                    <td class="price">$53.99</td>
+                    <td><a class="add-to-cart" data-item="nba2k">Add to cart</a></td>
+                </tr>
+            </table>
+        </section>
+        <section class="right-col">
+            <h3>Cart</h3>
+            <table id="cart" class="table table-striped table-bordered">
+                <tr>
+                    <th>Item</th>
+                    <th>Price</th>
+                    <th>Action</th>
+                </tr>
+                <tr id="empty-cart">
+                    <td colspan="3">Your cart is empty</td>
+                </tr>
+            </table>
+            <div id="cart-total">
+                <strong>TOTAL: <span id="total">$0.00</span> </strong>
+            </div>
+            <div id="checkout">
+                <button id="checkout-button" type="button" class="btn btn-primary">Checkout</button>
+            </div>
+        </section>
+    </div>
 </body>
 </html>

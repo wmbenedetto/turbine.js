@@ -1,0 +1,51 @@
+body {
+    margin:20px;
+}
+
+a {
+    cursor:pointer;
+}
+
+#wrapper {
+    margin:auto;
+    width:980px;
+}
+
+.left-col,.right-col {
+    float:left;
+    padding:10px;
+    width:470px;
+}
+
+header {
+    overflow:hidden;
+}
+
+header .right-col {
+    margin-top: 18px;
+    text-align:right;
+}
+
+th, td {
+    width:20%;
+}
+
+th:nth-child(1),
+td:nth-child(1) {
+    width:60%;
+}
+
+td.price {
+    text-align:right;
+}
+
+#cart-total {
+    float:right;
+    font-size:16px;
+}
+
+#checkout {
+    clear:right;
+    float:right;
+    margin-top:10px;
+}
