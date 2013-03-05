@@ -387,20 +387,26 @@ if (typeof MINIFIED === 'undefined'){
         log : function(funcName,message,payload,level) {
 
             if (!MINIFIED){
-                payload                             = (!payload) ? '' : payload;
-                level                               = (!level) ? 'INFO' : level;
-                message                             = '[' + this.name + '.' + funcName + '()] ' + message;
+                payload                         = (!payload) ? '' : payload;
+                level                           = (!level) ? 'INFO' : level;
+                message                         = '[' + this.name + '.' + funcName + '()] ' + message;
 
                 if (this.isLoggable(level)) {
 
-                    if (level === 'ERROR') {
-                        console.error(message,payload);
-                    } else if (level === 'WARN') {
-                        console.warn(message,payload);
-                    } else if (level === 'INFO') {
-                        console.info(message,payload);
-                    } else {
-                        console.log(message,payload);
+                    switch (level){
+
+                        case 'ERROR':
+                            console.error(message,payload);
+                            break;
+                        case 'WARN':
+                            console.warn(message,payload);
+                            break;
+                        case 'INFO':
+                            console.info(message,payload);
+                            break;
+                        default:
+                            console.log(message,payload);
+                            break;
                     }
                 }
             }
@@ -416,11 +422,10 @@ if (typeof MINIFIED === 'undefined'){
         isLoggable : function(level){
 
             if (!MINIFIED){
-                var currentLogLevel                 = this.logLevels[this.logLevel];
-                var thisLogLevel                    = this.logLevels[level];
-
-                return thisLogLevel <= currentLogLevel;
+                return this.logLevels[level] <= this.logLevels[this.logLevel];
             }
+
+            return false;
         },
 
         /**
@@ -964,15 +969,7 @@ if (typeof MINIFIED === 'undefined'){
          * @param query The query for which the response should be reset
          */
         resetResponse : function(query) {
-
-            if (this.hasResetFunction(query)) {
-
-                this.responses[query]           = this.resets[query]();
-
-            } else {
-
-                this.responses[query]           = null;
-            }
+            this.responses[query]               = (this.hasResetFunction(query)) ? this.resets[query]() : null;
         },
 
         /**
@@ -1055,9 +1052,9 @@ if (typeof MINIFIED === 'undefined'){
             if (!MINIFIED){
                 this.log('publishAndWait', 'Publishing message and waiting for response', {
 
-                    message                         : message,
-                    using                           : using,
-                    response                        : response
+                    message                     : message,
+                    using                       : using,
+                    response                    : response
                 });
             }
 
@@ -1108,11 +1105,11 @@ if (typeof MINIFIED === 'undefined'){
 
             this.publish('Turbine|delay|started',{
 
-                query                       : query,
-                delay                       : response.delay + ' ms'
+                query                           : query,
+                delay                           : response.delay + ' ms'
             });
 
-            var self                        = this;
+            var self                            = this;
 
             this.timers.delay = setTimeout(function() {
 
@@ -1135,12 +1132,12 @@ if (typeof MINIFIED === 'undefined'){
 
             this.publish('Turbine|delay|completed',{
 
-                query                       : query,
-                delay                       : response.delay + ' ms'
+                query                           : query,
+                delay                           : response.delay + ' ms'
             });
 
             /* Set flag so delay isn't triggered again during reprocessing */
-            response.isAfterDelay           = true;
+            response.isAfterDelay               = true;
 
             this.processResponse(query,response);
         },
@@ -1565,7 +1562,7 @@ if (typeof MINIFIED === 'undefined'){
 
             /* Convert boolean result to yes/no string */
             if (typeof this.responses[query] === 'boolean' || !this.responses[query]) {
-                this.responses[query]       = (this.responses[query]) ? 'yes' : 'no';
+                this.responses[query]           = (this.responses[query]) ? 'yes' : 'no';
             }
 
             if (!MINIFIED){

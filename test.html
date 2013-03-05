@@ -49,7 +49,7 @@
         var initObj = {
 
             name : 'Turbine1',
-            logLevel : 'INFO',
+            logLevel : 'DEBUG',
 
             queries : {
 
@@ -131,92 +131,6 @@
 
         window.turbine = new Turbine(initObj);
         turbine.start();
-
-        var initObj2 = {
-
-            name : 'Turbine2',
-            logLevel : 'INFO',
-
-            queries : {
-
-                isAvailable : function(){
-                    return true;
-                }
-            },
-
-            resets : {
-
-                isAvailable : function(){
-                    return true;
-                }
-            },
-
-            responses : {
-
-                isAvailable : true
-            },
-
-            workflow : {
-
-                 config : {
-
-                    shortcuts : {
-
-                    },
-
-                    variables : {
-
-                    },
-
-                    always : {
-
-                        timeout : {
-                            after                           : 300000,
-                            publish : {
-                                message                     : "Turbine|start|transition",
-                                using : {
-                                    module                  : "Status",
-                                    view                    : "Fail",
-                                    content                 : "fail.generalError",
-                                    download 		        : true,
-                                    tryAgain                : true
-                                }
-                            },
-                            then                            : "done"
-                        }
-                    }
-                },
-
-                queries : {
-
-                    isAvailable : {
-                        yes : {
-                            publish : {
-                                message : ["Turbine|testing|started","Turbine|foo|started"],
-                                using : {
-                                    foo : 'baz'
-                                }
-                            },
-                            waitFor : "UI|button|clicked",
-                            repeat : {
-                                limit : 3,
-                                then : 'done'
-                            }
-                        },
-                        no : {
-                            then : 'done'
-                        }
-                    }
-                },
-
-                mixins : {
-
-                }
-            }
-        };
-
-        window.turbine2 = new Turbine(initObj2);
-        turbine2.start();
     });
 </script>
 </head>
