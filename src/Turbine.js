@@ -90,8 +90,8 @@ if (typeof MINIFIED === 'undefined'){
 
         this.globalListeners                    = {};
         this.globalTimeoutAllowed               = false;
-        this.logLevel                           = initObj.logLevel || 'ERROR';
-        this.name                               = initObj.name || 'Turbine';
+        this.logLevel                           = initObj.logLevel  || 'ERROR';
+        this.name                               = initObj.name      || 'Turbine';
         this.numGlobalListeners                 = 0;
         this.queries                            = {};
         this.queryOrder                         = [];
@@ -113,8 +113,6 @@ if (typeof MINIFIED === 'undefined'){
         this.importFunctions(initObj);
         this.importObjects(initObj);
         this.importWorkflow(initObj);
-
-        this.queue(this.getStartingQuery(),null);
     };
 
     Turbine.prototype = {
@@ -567,9 +565,10 @@ if (typeof MINIFIED === 'undefined'){
                 this.log('start', 'Starting Turbine');
             }
 
-            this.publish('Turbine|workflow|started');
-
             this.started                        = true;
+
+            this.publish('Turbine|workflow|started');
+            this.queue(this.getStartingQuery());
 
             this.next();
         },
@@ -994,21 +993,17 @@ if (typeof MINIFIED === 'undefined'){
         },
 
         /**
-         * Checks whether there's a function to reset the query response
-         *
-         * @param query The query for which the response should be reset
-         */
-        hasResetFunction : function(query) {
-            return typeof this.resets[query] === 'function';
-        },
-
-        /**
          * Resets the response to a query
          *
          * @param query The query for which the response should be reset
          */
         resetResponse : function(query) {
-            this.responses[query]               = (this.hasResetFunction(query)) ? this.resets[query]() : null;
+
+            if (typeof this.resets[query] === 'function'){
+                this.responses[query]           = this.resets[query]();
+            } else if (typeof this.resets[query] !== 'undefined'){
+                this.responses[query]           = this.resets[query];
+            }
         },
 
         /**
@@ -1034,7 +1029,7 @@ if (typeof MINIFIED === 'undefined'){
                 responseObj                     : response
             });
 
-            /* Set flag so delay isn't triggered again during reprocessing */
+            /* Set flag so timeout isn't triggered again during reprocessing */
             response.timeout.isAfterTimeout     = true;
 
             this.processResponse(query,response.timeout,true);
@@ -1139,13 +1134,13 @@ if (typeof MINIFIED === 'undefined'){
         startDelayTimeout : function(query,response) {
 
             if (!MINIFIED){
-                this.log('startDelayTimeout',query + ' delay started. Delayed for ' + response.delay + ' ms', response);
+                this.log('startDelayTimeout',query + ' delay started. Delayed for ' + response.delay.for + ' ms', response);
             }
 
             this.publish('Turbine|delay|started',{
 
                 query                           : query,
-                delay                           : response.delay + ' ms'
+                delay                           : response.delay.for + ' ms'
             });
 
             var self                            = this;
@@ -1154,7 +1149,7 @@ if (typeof MINIFIED === 'undefined'){
 
                 self.onDelayTimeout(query,response);
 
-            },response.delay);
+            },response.delay.for);
         },
 
         /**
@@ -1166,19 +1161,16 @@ if (typeof MINIFIED === 'undefined'){
         onDelayTimeout : function(query,response) {
 
             if (!MINIFIED){
-                this.log('onDelayTimeout',query + ' delay completed after ' + response.delay + ' ms', response);
+                this.log('onDelayTimeout',query + ' delay completed after ' + response.delay.for + ' ms', response);
             }
 
             this.publish('Turbine|delay|completed',{
 
                 query                           : query,
-                delay                           : response.delay + ' ms'
+                delay                           : response.delay.for + ' ms'
             });
 
-            /* Set flag so delay isn't triggered again during reprocessing */
-            response.isAfterDelay               = true;
-
-            this.processResponse(query,response);
+            this.processResponse(query,response.delay);
         },
 
         /**
@@ -1238,13 +1230,18 @@ if (typeof MINIFIED === 'undefined'){
             this.nextQueryObj                   = this.buildNextQueryObj(query,this.waitingFor);
             this.nextQuery                      = query;
 
-            this.publish('Turbine|workflow|waiting',{ waitingFor : this.waitingFor });
-
-            this.listen(this.waitingFor,this.handleIncomingMessage.bind(this));
+            if (this.waitingFor.length > 0){
+                this.publish('Turbine|workflow|waiting',{ waitingFor : this.waitingFor });
+                this.listen(this.waitingFor,this.handleIncomingMessage.bind(this));
+            }
 
             if (!MINIFIED){
-                this.log('queue', 'Waiting for', this.waitingFor);
-                this.log('queue', 'Queuing ' + this.nextQueryObj[this.waitingFor] + ' query');
+
+                if (this.waitingFor.length > 0){
+                    this.log('queue', 'Waiting for', this.waitingFor);
+                }
+
+                this.log('queue', 'Queuing ' + this.nextQuery + ' query');
             }
         },
 

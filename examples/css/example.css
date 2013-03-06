@@ -11,6 +11,10 @@ a {
     width:980px;
 }
 
+#example {
+    display:none;
+}
+
 .left-col,.right-col {
     float:left;
     padding:10px;
@@ -71,4 +75,8 @@ td.price {
 .orig-price {
     text-decoration:line-through;
     color:#cc0000;
+}
+
+#workflow-options h4 {
+    margin-top:0;
 }
