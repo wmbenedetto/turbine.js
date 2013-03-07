@@ -247,6 +247,8 @@ if (typeof MINIFIED === 'undefined'){
                 this.workflow.config.always         = initObj.workflow.config.always || {};
                 this.workflow.mixins                = initObj.workflow.mixins || {};
 
+                this.replaceMixins(this.workflow);
+
                 if (this.utils.isObjLiteral(initObj.workflow.config)) {
                     this.importConfig(initObj.workflow);
                 }
@@ -1699,20 +1701,78 @@ if (typeof MINIFIED === 'undefined'){
         },
 
         /**
-         * Replaces variables in workflow with values. Variables are defined in the workflow config and
-         * are always prepended with a $. They work just like variables in any other programming language.
-         * Define them and then the value of the variable is used in its place.
+         * Replaces variables in workflow with values.
          *
-         * @param response The response in which the variables are being replaced
+         * Variables are defined in the workflow config and are always prepended with a $.
+         * They work just like variables in any other programming language. Define them and
+         * then the value of the variable is used in its place.
+         *
+         * NOTE: Variables can only be used for scalar values. To replace non-scalar values,
+         * use mixins instead.
+         *
+         * "config" : {
+         *     "variables" : {
+         *         "startOverTimeout"       : "30000"
+         *     }
+         * }
+         *
+         * "queries" : {
+         *     "isStartOverAllowed" : {
+         *         "yes" : {
+         *             "waitFor"            : "App|process|restarted",
+         *             "timeout" : {
+         *                 "after"          : "$startOverTimeout", // <-- This is the variable
+         *                 "then"           : "stop."
+         *             },
+         *             "then"               : "@start"
+         *         },
+         *         "no" : {
+         *             "then"               : "stop."
+         *         }
+         *     }
+         * }
+         *
+         * @param target The response in which the variables are being replaced
          * @param workflow The workflow being imported
          */
-        replaceVariables : function(response,workflow) {
-            this.replace(response,workflow.config.variables,'$',true,'variable');
+        replaceVariables : function(target,workflow) {
+
+            var thisTarget, thisVar, replaceWith;
+
+            for (var variable in workflow.config.variables){
+
+                if (workflow.config.variables.hasOwnProperty(variable)){
+
+                    for (var item in target) {
+
+                        if (target.hasOwnProperty(item)) {
+
+                            thisTarget                  = target[item];
+                            thisVar                     = '$'+variable;
+                            replaceWith                 = workflow.config.variables[variable];
+
+                            /* Replace variables with values defined in source */
+                            if (typeof thisTarget === 'string' && thisTarget.indexOf(thisVar) > -1) {
+
+                                if (!MINIFIED){
+                                    this.log('replace', 'Replacing ' + thisVar + ' variable with "' + replaceWith + '"', null , 'DEBUG');
+                                }
+
+                                target[item]            = thisTarget.replace(new RegExp('\\'+thisVar,'g'),replaceWith);
+
+                            } else if (this.utils.isObjLiteral(thisTarget)) {
+
+                                this.replaceVariables(thisTarget,workflow);
+                            }
+                        }
+                    }
+                }
+            }
         },
 
         /**
-         * Replaces shortcuts in workflow with shortcut values. Shortcuts in the workflow config,
-         * and are always prepended with an @ symbol.
+         * Replaces shortcuts in workflow with shortcut values. Shortcuts are defined in the
+         * workflow config, and are always prepended with an @ symbol when used.
          *
          * Shortcuts are a way to reference a particular query in the workflow with an alias,
          * rather than explicitly by name. For example, you may define a @start shortcut,
@@ -1720,17 +1780,17 @@ if (typeof MINIFIED === 'undefined'){
          *
          * "config" : {
          *     "shortcuts" : {
-         *         "@start" : "isWorkflowActive"
+         *         "start"      : "isWorkflowActive"
          *     }
          * }
          *
          * "queries" : {
          *     "isStartOverAllowed" : {
          *         "yes" : {
-         *             "then" : "@start" // <-- This is the shortcut
+         *             "then"   : "@start" // <-- This is the shortcut
          *         },
          *         "no" : {
-         *             "then" : "end"
+         *             "then"   : "stop."
          *         }
          *     }
          * }
@@ -1748,19 +1808,27 @@ if (typeof MINIFIED === 'undefined'){
         /**
          * Replaces mixins in workflow with values.
          *
-         * Mixins are a way to define an entire response object as a reference, to avoid repeating
-         * the same object over and over.
+         * Mixins are a way to define an entire object as a reference, to avoid repeating the same
+         * object over and over.
          *
          * Mixins are defined in their own object in the workflow. The mixin name is always
-         * prepended with a plus sign, and the value is always a full response object.
+         * prepended with a plus sign, and the value is always an object.
          *
          * For example:
          *
          * "mixins" : {
-         *     "+wrongPassword" : {
+         *     "wrongPassword" : {
          *         "publish"               : "UI.fail.show.PASSWORD_INCORRECT",
-         *         "then"                  : "end"
-         *     }
+         *         "then"                  : "stop."
+         *     },
+         *
+         *     "DISCOUNT_APPLIED" : {
+         *         "message"               : "Cart|discount|applied",
+         *          "using" : {
+         *              "content"           : "discountApplied",
+         *              "discount"          : "$discountAmount"
+         *          }
+         *      }
          * }
          *
          * Then they are used like this:
@@ -1770,15 +1838,20 @@ if (typeof MINIFIED === 'undefined'){
          *         "yes" : {
          *             "then"               : "isCreditCardOnFile"
          *         },
-         *         "no"                     : "+wrongPassword" // <-- This is the mixin
+         *         "no"                     : "+wrongPassword"      // <-- This is a mixin
+         *     },
+         *     "isDiscountValid" : {
+         *         publish                  : "+DISCOUNT_APPLIED",  // <-- This is a mixin
+         *         then                     : "isCheckoutStarted"
          *     }
          * }
          *
-         * @param query The query in which the mixins are being replaced
+         * Mixins are replaced recursively, so mixins can be nested within other mixins
+         *
          * @param workflow The workflow being imported
          */
-        replaceMixins : function(query,workflow) {
-            this.replace(workflow.queries[query],workflow.mixins,'+',true,'mixin');
+        replaceMixins : function(workflow) {
+            this.replace(workflow.queries,workflow.mixins,'+',true,'mixin');
         },
 
         /**
@@ -1802,13 +1875,15 @@ if (typeof MINIFIED === 'undefined'){
                     /* Replace variables with values defined in source */
                     if (typeof thisItem === 'string' && thisItem.indexOf(prepend) === 0) {
 
+                        thisItem                    = thisItem.substr(1);
+
                         if (source[thisItem]) {
 
                             if (!MINIFIED){
-                                this.log('replace', 'Replacing ' + thisItem + ' ' + type + ' with', source[thisItem], 'DEBUG');
+                                this.log('replace', 'Replacing ' + prepend + thisItem + ' ' + type + ' with', source[thisItem], 'DEBUG');
                             }
 
-                            target[item]             = source[thisItem];
+                            target[item]            = source[thisItem];
                         }
 
                     } else if (recursive && typeof thisItem === 'object') {

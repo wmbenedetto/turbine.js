@@ -32,11 +32,11 @@ var turbineInit = {
          config : {
 
             shortcuts : {
-                '@start'                            : 'isTurbineStarted'
+                start                               : 'isTurbineStarted'
             },
 
             variables : {
-                '$specialOfferDiscount'             : webapi.getSpecialOfferDiscount()
+                specialOfferDiscount                : webapi.getSpecialOfferDiscount()
             },
 
             always : {
@@ -68,7 +68,17 @@ var turbineInit = {
 
         mixins : {
 
-            '+checkoutComplete' : {
+            isTurbineStarted : {
+                yes : {
+                    waitFor                         : 'Cart|item|added',
+                    then                            : 'gotSpecialOffer'
+                },
+                no : {
+                    then                            : 'stop'
+                }
+            },
+
+            checkoutComplete : {
                 publish : {
                     message                         : 'TurbineExample|checkout|complete',
                     using : {
@@ -76,6 +86,19 @@ var turbineInit = {
                     }
                 },
                 then                                : '@start'
+            },
+
+            APPLIED_DISCOUNT : {
+                handle                              : 'APPLIED_DISCOUNT',
+                description                         : '$specialOfferDiscount% discount applied',
+                discount                            : '$specialOfferDiscount'
+            },
+
+            EMPTY_CART : {
+                message                             : 'TurbineExample|issue|detected',
+                using : {
+                    content                         : 'emptyCart'
+                }
             }
         }
     }
@@ -127,12 +150,7 @@ var queries = {
 
         isCartEmpty : {
             yes : {
-                publish : {
-                    message                     : 'TurbineExample|issue|detected',
-                    using : {
-                        content                 : 'emptyCart'
-                    }
-                },
+                publish                         : '+EMPTY_CART',
                 then                            : '@start'
             },
             no                                  : '+checkoutComplete'
@@ -150,13 +168,7 @@ var queries = {
                         discount                : '$specialOfferDiscount'
                     }
                 },
-                report : {
-                    handle                      : 'APPLIED_DISCOUNT',
-                    description                 : 'A discount was applied',
-                    using : {
-                        discount                : '$specialOfferDiscount'
-                    }
-                },
+                report                          : '+APPLIED_DISCOUNT',
                 then                            : 'isCheckoutStarted'
             },
             no : {
@@ -171,15 +183,7 @@ var queries = {
      */
     loginBeforeCheckout : {
 
-        isTurbineStarted : {
-            yes : {
-                waitFor                         : 'Cart|item|added',
-                then                            : 'gotSpecialOffer'
-            },
-            no : {
-                then                            : 'stop'
-            }
-        },
+        isTurbineStarted                        : '+isTurbineStarted',
 
         gotSpecialOffer : {
             yes : {
@@ -202,11 +206,7 @@ var queries = {
                         discount                : '$specialOfferDiscount'
                     }
                 },
-                report : {
-                    handle                      : 'APPLIED_DISCOUNT',
-                    description                 : 'A discount was applied',
-                    discount                    : '$specialOfferDiscount'
-                },
+                report                          : '+APPLIED_DISCOUNT',
                 then                            : '@start'
             },
             no : {
@@ -282,12 +282,7 @@ var queries = {
 
         isCartEmpty : {
             yes : {
-                publish : {
-                    message                     : 'TurbineExample|issue|detected',
-                    using : {
-                        content                 : 'emptyCart'
-                    }
-                },
+                publish                         : '+EMPTY_CART',
                 then                            : '@start'
             },
             no                                  : '+checkoutComplete'
