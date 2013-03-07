@@ -81,9 +81,12 @@ if (typeof MINIFIED === 'undefined'){
 
         if (typeof initObj !== 'object' || initObj === null){
 
-            var errorMsg = 'Turbine constructor must be passed an initialization object';
+            var errorMsg                        = 'Turbine constructor must be passed an initialization object';
 
-            this.report('INIT_OBJ_NOT_DEFINED',errorMsg);
+            this.report({
+                handle                          : 'INIT_OBJ_NOT_DEFINED',
+                desc                            : errorMsg
+            });
 
             throw new Error(errorMsg);
         }
@@ -187,7 +190,10 @@ if (typeof MINIFIED === 'undefined'){
 
                 var errorMsg                    = '[' + this.name + '.importFunctions()] You must either define publish(), listen(), and remove() functions via the initObj passed to the Turbine constructor, or you must include jQuery in the page.';
 
-                this.report('REQUIRED_FUNCTIONS_NOT_DEFINED',errorMsg);
+                this.report({
+                    handle                      : 'REQUIRED_FUNCTIONS_NOT_DEFINED',
+                    desc                        : errorMsg
+                });
 
                 throw new Error(errorMsg);
             }
@@ -253,7 +259,10 @@ if (typeof MINIFIED === 'undefined'){
 
                 var errorMsg                        = '[' + this.name + '.importWorkflow()] Could not import workflow. Workflow must be an object literal.';
 
-                this.report('COULD_NOT_IMPORT_WORKFLOW',errorMsg);
+                this.report({
+                    handle                      : 'COULD_NOT_IMPORT_WORKFLOW',
+                    desc                        : errorMsg
+                });
 
                 throw new Error(errorMsg);
             }
@@ -320,7 +329,10 @@ if (typeof MINIFIED === 'undefined'){
 
                 var errorMsg                    = '[' + this.name + '.importQueries()] The workflow has no queries to import';
 
-                this.report('NO_QUERIES_TO_IMPORT',errorMsg);
+                this.report({
+                    handle                      : 'NO_QUERIES_TO_IMPORT',
+                    desc                        : errorMsg
+                });
 
                 throw new Error(errorMsg);
             }
@@ -437,15 +449,20 @@ if (typeof MINIFIED === 'undefined'){
          * This can be overridden by defining a report() method in the initObj passed to
          * the constructor.
          *
-         * @param handle Short identifier of the error, i.e. SOMETHING_BAD_HAPPENED or 100.1111
-         * @param desc Human-readable description of the error
-         * @param payload Object containing data needed to report or debug the error
+         * @param obj Object containing handle, description, and/or payload
          */
-        report : function(handle,desc,payload) {
+        report : function(obj) {
 
             if (!MINIFIED){
-                this.log('report', handle + ': ' + desc, payload, 'ERROR');
+
+                obj                             = (this.utils.isObjLiteral(obj)) ? obj : {};
+                var handle                      = obj.handle || 'WORKFLOW_ISSUE_REPORTED';
+                var desc                        = obj.description || '';
+
+                this.log('report', handle + ': ' + desc, obj, 'ERROR');
             }
+
+            return null;
         },
 
         /**
@@ -659,7 +676,10 @@ if (typeof MINIFIED === 'undefined'){
                 /* If there's no default response specified either, then there's nothing else we can do */
                 if (!responseObj) {
 
-                    this.report('RESPONSE_DOES_NOT_EXIST', '[' + this.name + '.exec()] ' + responseName + ' response does not exist for the ' + query + ' query');
+                    this.report({
+                        handle                  : 'RESPONSE_DOES_NOT_EXIST',
+                        desc                    : '[' + this.name + '.exec()] ' + responseName + ' response does not exist for the ' + query + ' query'
+                    });
 
                     return null;
                 }
@@ -794,26 +814,24 @@ if (typeof MINIFIED === 'undefined'){
         /**
          * Reports an issue from the workflow
          *
-         * @param query
-         * @param response
+         * @param query The query being executed
+         * @param response The response containing the report
          */
         reportIssueFromWorkflow : function(query,response){
 
             var responseName            = this.responses[query];
-            var handle                  = response.report.handle || 'WORKFLOW_ISSUE_REPORTED';
-            var description             = response.report.description || '';
-            var payload                 = {};
+            response.report             = (this.utils.isObjLiteral(response.report)) ? response.report : {};
 
-            payload.data                = response.report.using || null;
-
-            payload.meta = {
+            /* Add workflow info to report */
+            response.report.workflow = {
+                name                    : this.name,
                 query                   : query,
                 response                : responseName,
                 responseObj             : this.workflow.queries[query][responseName],
                 timestamp               : new Date().getTime()
             };
 
-            this.report(handle,description,payload);
+            this.report(response.report);
         },
 
         /**

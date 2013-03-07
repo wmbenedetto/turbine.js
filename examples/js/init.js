@@ -205,9 +205,7 @@ var queries = {
                 report : {
                     handle                      : 'APPLIED_DISCOUNT',
                     description                 : 'A discount was applied',
-                    using : {
-                        discount                : '$specialOfferDiscount'
-                    }
+                    discount                    : '$specialOfferDiscount'
                 },
                 then                            : '@start'
             },
