@@ -150,6 +150,13 @@ var queries = {
                         discount                : '$specialOfferDiscount'
                     }
                 },
+                report : {
+                    handle                      : 'APPLIED_DISCOUNT',
+                    description                 : 'A discount was applied',
+                    using : {
+                        discount                : '$specialOfferDiscount'
+                    }
+                },
                 then                            : 'isCheckoutStarted'
             },
             no : {
@@ -171,6 +178,82 @@ var queries = {
             },
             no : {
                 then                            : 'stop'
+            }
+        },
+
+        gotSpecialOffer : {
+            yes : {
+                then                            : 'whichItemMissing'
+            },
+            no : {
+                then                            : 'getsSpecialOffer'
+            }
+        },
+
+        getsSpecialOffer : {
+            yes : {
+                publish : {
+                    message : [
+                        'TurbineExample|console|added',
+                        'TurbineExample|specialOffer|granted'
+                    ],
+                    using : {
+                        content                 : 'specialOffer',
+                        discount                : '$specialOfferDiscount'
+                    }
+                },
+                report : {
+                    handle                      : 'APPLIED_DISCOUNT',
+                    description                 : 'A discount was applied',
+                    using : {
+                        discount                : '$specialOfferDiscount'
+                    }
+                },
+                then                            : '@start'
+            },
+            no : {
+                "then"                          : "whichItemMissing"
+            }
+        },
+
+        whichItemMissing : {
+
+            dualshock : {
+                waitFor : [
+                    'Cart|item|added',
+                    'Cart|checkout|started'
+                ],
+                timeout : {
+                    after                       : 2000,
+                    publish : {
+                        message                 : 'TurbineExample|item|missing',
+                        using : {
+                            content             : 'addDualshock'
+                        }
+                    },
+                    then                        : '@start'
+                },
+                then                            : 'gotSpecialOffer'
+            },
+            charger : {
+                waitFor : [
+                    'Cart|item|added',
+                    'Cart|checkout|started'
+                ],
+                timeout : {
+                    after                       : 2000,
+                    publish : {
+                        message                 : 'TurbineExample|item|missing',
+                        using : {
+                            content             : 'addCharger'
+                        }
+                    },
+                    then                        : '@start'
+                },
+                then                            : 'gotSpecialOffer'
+            },
+            default : {
+                "then"                          : "@start"
             }
         },
 
@@ -210,65 +293,6 @@ var queries = {
                 then                            : '@start'
             },
             no                                  : '+checkoutComplete'
-        },
-
-        gotSpecialOffer : {
-            yes : {
-                then                            : 'whichItemMissing'
-            },
-            no : {
-                then                            : 'getsSpecialOffer'
-            }
-        },
-
-        getsSpecialOffer : {
-            yes : {
-                publish : {
-                    message : [
-                        'TurbineExample|console|added',
-                        'TurbineExample|specialOffer|granted'
-                    ],
-                    using : {
-                        content                 : 'specialOffer',
-                        discount                : '$specialOfferDiscount'
-                    }
-                },
-                then                            : '@start'
-            },
-            no : {
-                "then"                          : "whichItemMissing"
-            }
-        },
-
-        whichItemMissing : {
-
-            dualshock : {
-                delay : {
-                    for                         : 2000,
-                    publish : {
-                        message                 : 'TurbineExample|item|missing',
-                        using : {
-                            content             : 'addDualshock'
-                        }
-                    },
-                    then                        : '@start'
-                }
-            },
-            charger : {
-                delay : {
-                    for                         : 2000,
-                    publish : {
-                        message                 : 'TurbineExample|item|missing',
-                        using : {
-                            content             : 'addCharger'
-                        }
-                    },
-                    then                        : '@start'
-                }
-            },
-            default : {
-                "then"                          : "@start"
-            }
         }
     }
 };

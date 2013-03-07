@@ -444,7 +444,7 @@ if (typeof MINIFIED === 'undefined'){
         report : function(handle,desc,payload) {
 
             if (!MINIFIED){
-                this.log('report', desc + ' (' + handle + ')', payload, 'ERROR');
+                this.log('report', handle + ': ' + desc, payload, 'ERROR');
             }
         },
 
@@ -713,15 +713,7 @@ if (typeof MINIFIED === 'undefined'){
                 /* "report" tells us to report an issue. We only want to report it once, so
                  * we ignore it if we're processing the response as part of a publish callback */
                 if (response.report && !response.isPublishCallback) {
-
-                    var responseName            = this.responses[query];
-
-                    this.report(response.report,'Turbine reported ' + response.report + ' from "' + responseName + '" response of "' + query + '" query',{
-
-                        query                   : query,
-                        response                : responseName,
-                        responseObj             : this.workflow.queries[query][responseName]
-                    });
+                    this.reportIssueFromWorkflow(query,response);
                 }
 
                 /* If we have "publish" with no "waitFor", then just publish the message and move on */
@@ -797,6 +789,31 @@ if (typeof MINIFIED === 'undefined'){
                     }
                 }
             }
+        },
+
+        /**
+         * Reports an issue from the workflow
+         *
+         * @param query
+         * @param response
+         */
+        reportIssueFromWorkflow : function(query,response){
+
+            var responseName            = this.responses[query];
+            var handle                  = response.report.handle || 'WORKFLOW_ISSUE_REPORTED';
+            var description             = response.report.description || '';
+            var payload                 = {};
+
+            payload.data                = response.report.using || null;
+
+            payload.meta = {
+                query                   : query,
+                response                : responseName,
+                responseObj             : this.workflow.queries[query][responseName],
+                timestamp               : new Date().getTime()
+            };
+
+            this.report(handle,description,payload);
         },
 
         /**
