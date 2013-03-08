@@ -141,7 +141,8 @@ if (typeof MINIFIED === 'undefined'){
             ERROR                               : 1,
             WARN                                : 2,
             INFO                                : 3,
-            DEBUG                               : 4
+            DEBUG                               : 4,
+            TRACE                               : 5
         },
 
         getPublicAPI : function(){
@@ -245,9 +246,11 @@ if (typeof MINIFIED === 'undefined'){
                 this.workflow.config.shortcuts      = initObj.workflow.config.shortcuts || {};
                 this.workflow.config.variables      = initObj.workflow.config.variables || {};
                 this.workflow.config.always         = initObj.workflow.config.always || {};
-                this.workflow.mixins                = initObj.workflow.mixins || {};
 
-                this.replaceMixins(this.workflow);
+                if (this.utils.isObjLiteral(initObj.workflow.mixins)) {
+                    this.importMixins(initObj.workflow);
+                    this.replaceMixins(this.workflow.queries,this.workflow.mixins);
+                }
 
                 if (this.utils.isObjLiteral(initObj.workflow.config)) {
                     this.importConfig(initObj.workflow);
@@ -259,7 +262,7 @@ if (typeof MINIFIED === 'undefined'){
 
             } else {
 
-                var errorMsg                        = '[' + this.name + '.importWorkflow()] Could not import workflow. Workflow must be an object literal.';
+                var errorMsg                    = '[' + this.name + '.importWorkflow()] Could not import workflow. Workflow must be an object literal.';
 
                 this.report({
                     handle                      : 'COULD_NOT_IMPORT_WORKFLOW',
@@ -271,6 +274,29 @@ if (typeof MINIFIED === 'undefined'){
         },
 
         /**
+         * Imports mixins, recursively replacing any nested mixins
+         *
+         * @param workflow The workflow object containing the mixins
+         */
+        importMixins : function(workflow){
+
+            if (!MINIFIED){
+                this.log('importMixins', 'Importing mixins', workflow.mixins, 'DEBUG');
+            }
+
+            var mixins                          = workflow.mixins || {};
+
+            for (var mixin in mixins){
+
+                if (mixins.hasOwnProperty(mixin)){
+                    this.replaceMixins(mixins[mixin],mixins);
+                }
+            }
+
+            this.workflow.mixins                = mixins;
+        },
+
+        /**
          * Imports workflow config
          *
          * @param workflow The workflow object containing the config
@@ -278,7 +304,7 @@ if (typeof MINIFIED === 'undefined'){
         importConfig : function(workflow) {
 
             if (!MINIFIED){
-                this.log('importConfig', 'Importing config', workflow, 'DEBUG');
+                this.log('importConfig', 'Importing config', workflow.config, 'DEBUG');
             }
 
             var self                            = this;
@@ -311,7 +337,7 @@ if (typeof MINIFIED === 'undefined'){
         importQueries : function(workflow) {
 
             if (!MINIFIED){
-                this.log('importQueries', 'Importing queries', workflow, 'DEBUG');
+                this.log('importQueries', 'Importing queries', workflow.queries, 'DEBUG');
             }
 
             var totalQueries                    = 0;
@@ -349,7 +375,7 @@ if (typeof MINIFIED === 'undefined'){
         importQuery : function(query,workflow) {
 
             if (!MINIFIED){
-                this.log('importQuery', 'Importing workflow query: ' + query, workflow.queries[query], 'DEBUG');
+                this.log('importQuery', 'Importing workflow query: ' + query, workflow.queries[query], 'TRACE');
             }
 
             this.queries[query]                 = this.queries[query] || null;
@@ -379,7 +405,7 @@ if (typeof MINIFIED === 'undefined'){
             var thisResponse                    = workflow.queries[query][response];
 
             if (!MINIFIED){
-                this.log('importResponse', 'Importing ' + response + ' response to ' + query + ' query', thisResponse, 'DEBUG');
+                this.log('importResponse', 'Importing ' + response + ' response to ' + query + ' query', thisResponse, 'TRACE');
             }
 
             /* Add counter to any repeat object */
@@ -480,10 +506,14 @@ if (typeof MINIFIED === 'undefined'){
          */
         publish : function(message,payload,callback) {
 
+            payload                             = payload || {};
+
             if (!MINIFIED){
-                if (message.indexOf('Turbine')< 0){
-                    this.log('publish', 'Publishing message:', message);
-                }
+
+                /* Only log internal Turbine messages if log level is TRACE */
+                var logLevel                    = (payload.isInternalTurbineMsg) ? 'TRACE' : 'INFO';
+
+                this.log('publish', 'Publishing message:', message, logLevel);
             }
 
             if (typeof message === 'string') {
@@ -512,7 +542,7 @@ if (typeof MINIFIED === 'undefined'){
         listen : function(message,handler) {
 
             if (!MINIFIED){
-                this.log('listen', 'Adding listener for:', message, 'DEBUG');
+                this.log('listen', 'Adding listener for:', message, 'TRACE');
             }
 
             if (typeof message === 'string') {
@@ -539,7 +569,7 @@ if (typeof MINIFIED === 'undefined'){
         remove : function(message) {
 
             if (!MINIFIED){
-                this.log('remove', 'Removing listener for:', message, 'DEBUG');
+                this.log('remove', 'Removing listener for:', message, 'TRACE');
             }
 
             if (typeof message === 'string') {
@@ -586,7 +616,7 @@ if (typeof MINIFIED === 'undefined'){
 
             this.started                        = true;
 
-            this.publish('Turbine|workflow|started');
+            this.publish('Turbine|workflow|started', { isInternalTurbineMsg : true });
             this.queue(this.getStartingQuery());
 
             this.next();
@@ -605,7 +635,7 @@ if (typeof MINIFIED === 'undefined'){
 
             this.rewind();
 
-            this.publish('Turbine|workflow|stopped');
+            this.publish('Turbine|workflow|stopped',{ isInternalTurbineMsg : true });
         },
 
         /**
@@ -622,7 +652,7 @@ if (typeof MINIFIED === 'undefined'){
 
             this.rewind();
 
-            this.publish('Turbine|workflow|killed');
+            this.publish('Turbine|workflow|killed',{ isInternalTurbineMsg : true });
         },
 
         /**
@@ -635,7 +665,7 @@ if (typeof MINIFIED === 'undefined'){
             }
 
             if (!MINIFIED){
-                this.log('next', 'Executing next workflow query:', this.nextQuery, 'DEBUG');
+                this.log('next', 'Executing next workflow query:', this.nextQuery, 'TRACE');
             }
 
             this.exec(this.nextQuery);
@@ -688,14 +718,15 @@ if (typeof MINIFIED === 'undefined'){
             }
 
             if (!MINIFIED){
-                this.log('exec', 'Executing the ' + responseName + ' response to the ' + query + ' query', null, 'DEBUG');
+                this.log('exec', 'Executing the ' + responseName + ' response to the ' + query + ' query', responseObj, 'DEBUG');
             }
 
             this.publish('Turbine|query|executed',{
 
                 query                           : query,
                 response                        : responseName,
-                responseObj                     : responseObj
+                responseObj                     : responseObj,
+                isInternalTurbineMsg            : true
             });
 
             responseObj.responseName            = responseName;
@@ -719,7 +750,7 @@ if (typeof MINIFIED === 'undefined'){
             }
 
             if (!MINIFIED){
-                this.log('processResponse', 'Processing response to '+query+' query', response, 'DEBUG');
+                this.log('processResponse', 'Processing response to '+query+' query', response, 'TRACE');
             }
 
             if (!preventGlobalTimeout) {
@@ -821,16 +852,16 @@ if (typeof MINIFIED === 'undefined'){
          */
         reportIssueFromWorkflow : function(query,response){
 
-            var responseName            = this.responses[query];
-            response.report             = (this.utils.isObjLiteral(response.report)) ? response.report : {};
+            var responseName                    = this.responses[query];
+            response.report                     = (this.utils.isObjLiteral(response.report)) ? response.report : {};
 
             /* Add workflow info to report */
             response.report.workflow = {
-                name                    : this.name,
-                query                   : query,
-                response                : responseName,
-                responseObj             : this.workflow.queries[query][responseName],
-                timestamp               : new Date().getTime()
+                name                            : this.name,
+                query                           : query,
+                response                        : responseName,
+                responseObj                     : this.workflow.queries[query][responseName],
+                timestamp                       : new Date().getTime()
             };
 
             this.report(response.report);
@@ -845,10 +876,10 @@ if (typeof MINIFIED === 'undefined'){
         setResponseTimeout : function(query, response) {
 
             if (!this.timers.queries[query]) {
-                this.timers.queries[query]              = [];
+                this.timers.queries[query]      = [];
             }
 
-            var self                                    = this;
+            var self                            = this;
 
             var timeout = setTimeout(function() {
 
@@ -889,7 +920,8 @@ if (typeof MINIFIED === 'undefined'){
                 this.publish('Turbine|limit|exceeded|REPEAT',{
 
                     query                       : query,
-                    limit                       : response.repeat.limit
+                    limit                       : response.repeat.limit,
+                    isInternalTurbineMsg        : true
                 });
 
                 this.processResponse(query,response.repeat);
@@ -934,13 +966,14 @@ if (typeof MINIFIED === 'undefined'){
             to                                  = to || this.queryOrder[0];
 
             if (!MINIFIED){
-                this.log('rewind', 'Rewinding from ' + from + ' to ' + to, null, 'DEBUG');
+                this.log('rewind', 'Rewinding from ' + from + ' to ' + to, null, 'TRACE');
             }
 
             this.publish('Turbine|workflow|rewind',{
 
                 from                            : from,
-                to                              : to
+                to                              : to,
+                isInternalTurbineMsg            : true
             });
 
             for (var i=numQueries;i>=0;i--) {
@@ -1063,7 +1096,8 @@ if (typeof MINIFIED === 'undefined'){
 
                 query                           : query,
                 response                        : response.responseName,
-                responseObj                     : response
+                responseObj                     : response,
+                isInternalTurbineMsg            : true
             });
 
             /* Set flag so timeout isn't triggered again during reprocessing */
@@ -1156,7 +1190,7 @@ if (typeof MINIFIED === 'undefined'){
             }
 
             if (!MINIFIED){
-                this.log('getUsingObject', 'Getting using object', using, 'DEBUG');
+                this.log('getUsingObject', 'Getting using object', using, 'TRACE');
             }
 
             return using;
@@ -1177,7 +1211,8 @@ if (typeof MINIFIED === 'undefined'){
             this.publish('Turbine|delay|started',{
 
                 query                           : query,
-                delay                           : response.delay.for + ' ms'
+                delay                           : response.delay.for + ' ms',
+                isInternalTurbineMsg            : true
             });
 
             var self                            = this;
@@ -1204,7 +1239,8 @@ if (typeof MINIFIED === 'undefined'){
             this.publish('Turbine|delay|completed',{
 
                 query                           : query,
-                delay                           : response.delay.for + ' ms'
+                delay                           : response.delay.for + ' ms',
+                isInternalTurbineMsg            : true
             });
 
             this.processResponse(query,response.delay);
@@ -1233,7 +1269,7 @@ if (typeof MINIFIED === 'undefined'){
         importGlobalListener : function(listener,workflow) {
 
             if (!MINIFIED){
-                this.log('importGlobalListener', 'Importing global listener', listener, 'DEBUG');
+                this.log('importGlobalListener', 'Importing global listener', listener, 'TRACE');
             }
 
             this.replaceShortcuts(listener,workflow);
@@ -1268,7 +1304,13 @@ if (typeof MINIFIED === 'undefined'){
             this.nextQuery                      = query;
 
             if (this.waitingFor.length > 0){
-                this.publish('Turbine|workflow|waiting',{ waitingFor : this.waitingFor });
+
+                this.publish('Turbine|workflow|waiting',{
+
+                    waitingFor                  : this.waitingFor,
+                    isInternalTurbineMsg        : true
+                });
+
                 this.listen(this.waitingFor,this.handleIncomingMessage.bind(this));
             }
 
@@ -1371,7 +1413,8 @@ if (typeof MINIFIED === 'undefined'){
             this.publish('Turbine|message|handled',{
 
                 handledMessage                  : message,
-                next                            : this.nextQuery
+                next                            : this.nextQuery,
+                isInternalTurbineMsg            : true
             });
 
             this.waitingFor                     = null;
@@ -1403,7 +1446,7 @@ if (typeof MINIFIED === 'undefined'){
             }
 
             if (!MINIFIED){
-                this.log('getNextQuery', 'Getting the next query: '+next, null, 'DEBUG');
+                this.log('getNextQuery', 'Getting the next query: '+next, null, 'TRACE');
             }
 
             return next;
@@ -1415,7 +1458,7 @@ if (typeof MINIFIED === 'undefined'){
         clearTimers : function() {
 
             if (!MINIFIED){
-                this.log('clearTimers', 'Clearing all timers', this.timers, 'DEBUG');
+                this.log('clearTimers', 'Clearing all timers', this.timers, 'TRACE');
             }
 
             this.clearAllQueryTimers();
@@ -1429,7 +1472,7 @@ if (typeof MINIFIED === 'undefined'){
         clearAllQueryTimers : function() {
 
             if (!MINIFIED){
-                this.log('clearAllQueryTimers', 'Clearing all query timers', this.timers.queries, 'DEBUG');
+                this.log('clearAllQueryTimers', 'Clearing all query timers', this.timers.queries, 'TRACE');
             }
 
             for (var query in this.timers.queries) {
@@ -1453,7 +1496,7 @@ if (typeof MINIFIED === 'undefined'){
             if (timerArray) {
 
                 if (!MINIFIED){
-                    this.log('clearQueryTimer', 'Clearing '+query+' query timer', this.timers.queries[query], 'DEBUG');
+                    this.log('clearQueryTimer', 'Clearing '+query+' query timer', this.timers.queries[query], 'TRACE');
                 }
 
                 for (var i=0;i<timerArray.length;i++) {
@@ -1476,7 +1519,7 @@ if (typeof MINIFIED === 'undefined'){
             if (this.timers.global !== null) {
 
                 if (!MINIFIED){
-                    this.log('clearGlobalTimer', 'Clearing global timer', this.timers.global, 'DEBUG');
+                    this.log('clearGlobalTimer', 'Clearing global timer', this.timers.global, 'TRACE');
                 }
 
                 clearTimeout(this.timers.global);
@@ -1493,7 +1536,7 @@ if (typeof MINIFIED === 'undefined'){
             if (this.timers.delay !== null) {
 
                 if (!MINIFIED){
-                    this.log('clearDelayTimer', 'Clearing delay timer', this.timers.delay, 'DEBUG');
+                    this.log('clearDelayTimer', 'Clearing delay timer', this.timers.delay, 'TRACE');
                 }
 
                 clearTimeout(this.timers.delay);
@@ -1519,7 +1562,7 @@ if (typeof MINIFIED === 'undefined'){
             this.clearGlobalTimer();
 
             if (!MINIFIED){
-                this.log('startGlobalTimeout', 'Starting global timer', this.workflow.config.always.timeout, 'DEBUG');
+                this.log('startGlobalTimeout', 'Starting global timer', this.workflow.config.always.timeout, 'TRACE');
             }
 
             var timeout                         = this.getGlobalTimeout();
@@ -1573,9 +1616,10 @@ if (typeof MINIFIED === 'undefined'){
 
             this.publish('Turbine|timer|expired|WORKFLOW_GLOBAL_TIMEOUT', {
 
-                query                       : query,
-                response                    : response.responseName,
-                responseObj                 : response
+                query                           : query,
+                response                        : response.responseName,
+                responseObj                     : response,
+                isInternalTurbineMsg            : true
             });
 
             /* Set flag so timeout isn't triggered again during reprocessing */
@@ -1747,18 +1791,18 @@ if (typeof MINIFIED === 'undefined'){
 
                         if (target.hasOwnProperty(item)) {
 
-                            thisTarget                  = target[item];
-                            thisVar                     = '$'+variable;
-                            replaceWith                 = workflow.config.variables[variable];
+                            thisTarget          = target[item];
+                            thisVar             = '$'+variable;
+                            replaceWith         = workflow.config.variables[variable];
 
                             /* Replace variables with values defined in source */
                             if (typeof thisTarget === 'string' && thisTarget.indexOf(thisVar) > -1) {
 
                                 if (!MINIFIED){
-                                    this.log('replace', 'Replacing ' + thisVar + ' variable with "' + replaceWith + '"', null , 'DEBUG');
+                                    this.log('replace', 'Replacing ' + thisVar + ' variable with "' + replaceWith + '"', null , 'TRACE');
                                 }
 
-                                target[item]            = thisTarget.replace(new RegExp('\\'+thisVar,'g'),replaceWith);
+                                target[item]    = thisTarget.replace(new RegExp('\\'+thisVar,'g'),replaceWith);
 
                             } else if (this.utils.isObjLiteral(thisTarget)) {
 
@@ -1848,10 +1892,11 @@ if (typeof MINIFIED === 'undefined'){
          *
          * Mixins are replaced recursively, so mixins can be nested within other mixins
          *
-         * @param workflow The workflow being imported
+         * @param target The target object in which to replace mixins
+         * @param mixins Object containing mixin definitions
          */
-        replaceMixins : function(workflow) {
-            this.replace(workflow.queries,workflow.mixins,'+',true,'mixin');
+        replaceMixins : function(target,mixins) {
+            this.replace(target,mixins,'+',true,'mixin');
         },
 
         /**
@@ -1870,20 +1915,20 @@ if (typeof MINIFIED === 'undefined'){
 
                 if (target.hasOwnProperty(item)) {
 
-                    var thisItem                    = target[item];
+                    var thisItem                = target[item];
 
                     /* Replace variables with values defined in source */
                     if (typeof thisItem === 'string' && thisItem.indexOf(prepend) === 0) {
 
-                        thisItem                    = thisItem.substr(1);
+                        thisItem                = thisItem.substr(1);
 
                         if (source[thisItem]) {
 
                             if (!MINIFIED){
-                                this.log('replace', 'Replacing ' + prepend + thisItem + ' ' + type + ' with', source[thisItem], 'DEBUG');
+                                this.log('replace', 'Replacing ' + prepend + thisItem + ' ' + type + ' with', source[thisItem], 'TRACE');
                             }
 
-                            target[item]            = source[thisItem];
+                            target[item]        = source[thisItem];
                         }
 
                     } else if (recursive && typeof thisItem === 'object') {

@@ -8,4 +8,3 @@ var content = {
     addCharger                  : 'Don\'t forget to add a charging station!',
     addDualshock                : 'Don\'t forget to add a Dualshock controller!'
 };
-

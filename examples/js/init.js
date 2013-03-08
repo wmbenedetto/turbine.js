@@ -68,24 +68,23 @@ var turbineInit = {
 
         mixins : {
 
-            isTurbineStarted : {
+            isCartEmpty : {
                 yes : {
-                    waitFor                         : 'Cart|item|added',
-                    then                            : 'gotSpecialOffer'
+                    publish                         : '+EMPTY_CART',
+                    then                            : '@start'
                 },
                 no : {
-                    then                            : 'stop'
-                }
-            },
-
-            checkoutComplete : {
-                publish : {
-                    message                         : 'TurbineExample|checkout|complete',
-                    using : {
-                        content                     : 'success'
+                    delay : {
+                        for                         : 2500,
+                        publish : {
+                            message                 : 'TurbineExample|checkout|complete',
+                            using : {
+                                content             : 'success'
+                            }
+                        },
+                        then                        : '@start'
                     }
-                },
-                then                                : '@start'
+                }
             },
 
             APPLIED_DISCOUNT : {
@@ -148,13 +147,7 @@ var queries = {
             }
         },
 
-        isCartEmpty : {
-            yes : {
-                publish                         : '+EMPTY_CART',
-                then                            : '@start'
-            },
-            no                                  : '+checkoutComplete'
-        },
+        isCartEmpty                             : '+isCartEmpty',
 
         getsSpecialOffer : {
             yes : {
@@ -183,7 +176,15 @@ var queries = {
      */
     loginBeforeCheckout : {
 
-        isTurbineStarted                        : '+isTurbineStarted',
+        isTurbineStarted : {
+            yes : {
+                waitFor                         : 'Cart|item|added',
+                then                            : 'gotSpecialOffer'
+            },
+            no : {
+                then                            : 'stop'
+            }
+        },
 
         gotSpecialOffer : {
             yes : {
@@ -280,12 +281,6 @@ var queries = {
             }
         },
 
-        isCartEmpty : {
-            yes : {
-                publish                         : '+EMPTY_CART',
-                then                            : '@start'
-            },
-            no                                  : '+checkoutComplete'
-        }
+        isCartEmpty                             : '+isCartEmpty'
     }
 };

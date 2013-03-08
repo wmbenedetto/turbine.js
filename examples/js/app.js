@@ -53,6 +53,8 @@ var app = {
 
         $('#checkout-button').click(function(){
 
+            $(this).addClass('disabled').html('Processing ...');
+
             turbine.setResponse('isCheckoutStarted',true);
 
             $(turbine).trigger('Cart|checkout|started');
@@ -83,6 +85,7 @@ var app = {
                 $('#checkout-success .msg').html(content[payload.content]);
             }
 
+            $('#checkout-button').removeClass('disabled').html('Checkout');
             $('#checkout-success').show().delay(3000).fadeOut('fast');
 
             cart.emptyCart()
