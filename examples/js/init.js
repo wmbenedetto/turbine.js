@@ -36,7 +36,7 @@ var turbineInit = {
             },
 
             variables : {
-                specialOfferDiscount                : webapi.getSpecialOfferDiscount()
+                specialOfferDiscount                : 10
             },
 
             always : {
@@ -44,7 +44,7 @@ var turbineInit = {
                 timeout : {
                     after                           : 300000,
                     publish : {
-                        message                     : "Workflow|issue|detected|WORKFLOW_GLOBAL_TIMEOUT"
+                        message                     : "TurbineExample|issue|detected|WORKFLOW_GLOBAL_TIMEOUT"
                     },
                     then                            : "stop."
                 },
