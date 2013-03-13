@@ -113,6 +113,10 @@ if (typeof MINIFIED === 'undefined'){
 
         this.api                                = this.getPublicAPI();
 
+        if (typeof initObj.init === 'function'){
+            initObj.init();
+        }
+
         this.importFunctions(initObj);
         this.importObjects(initObj);
         this.importWorkflow(initObj);
@@ -123,6 +127,7 @@ if (typeof MINIFIED === 'undefined'){
         defaultGlobalTimeout                    : 3600000, // one hour, in milliseconds
         globalListeners                         : null,
         globalTimeoutAllowed                    : null,
+        init                                    : null,
         logLevel                                : null,
         name                                    : null,
         numGlobalListeners                      : null,
@@ -168,8 +173,16 @@ if (typeof MINIFIED === 'undefined'){
             }
 
             var thisFunc                        = null;
-            var validFunctions                  = ['log','publish','listen','report','remove','compare'];
             var importedFunctions               = {};
+            var validFunctions = [
+                'init',
+                'log',
+                'publish',
+                'listen',
+                'remove',
+                'report',
+                'compare'
+            ];
 
             for (var i=0;i<validFunctions.length;i++) {
 
@@ -1725,7 +1738,7 @@ if (typeof MINIFIED === 'undefined'){
         getConfigVar : function(varName) {
 
             /* Prepend dollar sign if not already there */
-            varName                             = (varName.indexOf('$') !== 0) ? '$' + varName : varName;
+            varName                             = (varName.indexOf('$') === 0) ? varName.substr(1) : varName;
 
             return (this.utils.isObjLiteral(this.workflow.config.variables)) ? this.workflow.config.variables[varName] : null;
         },
