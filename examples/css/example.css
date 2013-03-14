@@ -8,11 +8,14 @@ a {
 
 #wrapper {
     margin:auto;
+    overflow:hidden;
     width:980px;
 }
 
 #example {
     display:none;
+    overflow:hidden;
+    width:1960px;
 }
 
 .left-col,.right-col {
@@ -79,4 +82,32 @@ td.price {
 
 #workflow-options h4 {
     margin-top:0;
+}
+
+#signup-login{
+    display:none;
+}
+
+#signup-button {
+    font-size:11px;
+    margin-right:10px;
+}
+
+#signup-example,
+#cart-example {
+    float:left;
+    width:980px;
+}
+
+.signup-step {
+    background:#f8f8f8;
+    border:1px solid #e5e5e5;
+    border-radius: 12px;
+    display:none;
+    padding: 4px 12px 12px 12px;
+    width:400px;
+}
+
+.signup-step.step-1 {
+    display:block;
 }

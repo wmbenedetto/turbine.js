@@ -11,18 +11,20 @@ var app = {
 
         $('#start-turbine-button').click(function(){
 
+            $('#signup-login').show();
+
             /* Load workflow queries based on option selected in page */
             var querySet                        = $('input[name=loginBefore]:checked').val();
-            turbineInit.workflow.queries        = queries[querySet];
+            cartInit.workflow.queries           = queries[querySet];
 
-            window.turbine                      = new Turbine(turbineInit);
+            window.cartTurbine                      = new Turbine(cartInit);
 
-            self.bindUIHandlers();
-            self.addTurbineListeners();
+            self.bindCartUIHandlers();
+            self.addCartTurbineListeners();
 
             $('#workflow-options').slideUp(function(){
                 $('#example').slideDown(function(){
-                    turbine.api.start();
+                    cartTurbine.api.start();
                 });
             });
         });
@@ -31,7 +33,7 @@ var app = {
     /**
      * Binds handlers to UI elements
      */
-    bindUIHandlers : function(){
+    bindCartUIHandlers : function(){
 
         $('.add-to-cart').click(function(){
 
@@ -40,7 +42,7 @@ var app = {
 
             cart.add(itemType, guid);
 
-            $(turbine).trigger('Cart|item|added');
+            $(cartTurbine).trigger('Cart|item|added');
         });
 
         $('#login-button').click(function(){
@@ -51,22 +53,28 @@ var app = {
             app.logOut();
         });
 
+        $('#signup-button').click(function(){
+            app.showSignup();
+        });
+
         $('#checkout-button').click(function(){
 
             $(this).addClass('disabled').html('Processing ...');
 
-            turbine.setResponse('isCheckoutStarted',true);
+            cartTurbine.setResponse('isCheckoutStarted',true);
 
-            $(turbine).trigger('Cart|checkout|started');
+            $(cartTurbine).trigger('Cart|checkout|started');
         });
     },
 
     /**
-     * Adds listeners for messages published by Turbine
+     * Adds listeners for messages published by cart's Turbine
      */
-    addTurbineListeners : function(){
+    addCartTurbineListeners : function(){
 
-        $(turbine).bind('TurbineExample|issue|detected',function(event,payload){
+        var self                = this;
+
+        $(cartTurbine).bind('CartExample|issue|detected',function(event,payload){
 
             if (payload.content){
                 $('#checkout-alert .msg').html(content[payload.content]);
@@ -76,10 +84,16 @@ var app = {
                 cart.emptyCart();
             }
 
+            if (payload.forceSignup === true){
+
+                alert('You must sign up now');
+                self.showSignup();
+            }
+
             $('#checkout-alert').show().delay(3000).fadeOut('fast');
         });
 
-        $(turbine).bind('TurbineExample|checkout|complete',function(event,payload){
+        $(cartTurbine).bind('CartExample|checkout|completed',function(event,payload){
 
             if (payload.content){
                 $('#checkout-success .msg').html(content[payload.content]);
@@ -91,7 +105,7 @@ var app = {
             cart.emptyCart()
         });
 
-        $(turbine).bind('TurbineExample|specialOffer|granted',function(event,payload){
+        $(cartTurbine).bind('CartExample|specialOffer|granted',function(event,payload){
 
             if (payload.content){
                 $('#checkout-info .msg').html(content[payload.content]);
@@ -101,12 +115,12 @@ var app = {
                 cart.applyDiscount('nba2k',payload.discount);
             }
 
-            turbine.setResponse('gotSpecialOffer',true);
+            cartTurbine.setResponse('gotSpecialOffer',true);
 
             $('#checkout-info').show().delay(3000).fadeOut('fast');
         });
 
-        $(turbine).bind('TurbineExample|item|missing',function(event,payload){
+        $(cartTurbine).bind('CartExample|item|missing',function(event,payload){
 
             if (payload.content){
                 $('#checkout-info .msg').html(content[payload.content]);
@@ -123,6 +137,7 @@ var app = {
 
         this.loggedIn              = true;
 
+        $('#signup-button').hide();
         $('#login-button').hide();
         $('#logout-button').show();
     },
@@ -145,5 +160,97 @@ var app = {
      */
     isLoggedIn : function(){
         return this.loggedIn === true;
+    },
+
+    showSignup : function(){
+
+        $('#example').animate({
+            marginLeft: -980
+        });
+
+        this.startSignup();
+    },
+
+    hideSignup : function(){
+
+        $('#example').animate({
+            marginLeft: 0
+        });
+    },
+    
+    startSignup : function(){
+        
+        window.signupTurbine                     = new Turbine(signupInit);
+        signupTurbine.api.start();
+
+        this.bindSignupUIHandlers();
+        this.addSignupTurbineListeners();
+    },
+
+    bindSignupUIHandlers : function(){
+
+        var self                                = this;
+
+        $('#gender').change(function(){
+            signupTurbine.setResponse('whichGender',$(this).val());
+            $(signupTurbine).trigger('Signup|gender|selected');
+        });
+
+        $('body').on('change','#favorite', function(){
+            signupTurbine.setResponse('likes',$(this).val());
+            $(signupTurbine).trigger('Signup|favorite|selected');
+        });
+    },
+
+    addSignupTurbineListeners : function(){
+
+        $(signupTurbine).bind('SignupExample|step|advance|2',function(event,payload){
+
+            $('.signup-step.step-1').fadeOut(function(){
+
+                var $stepTwo                    = $('.signup-step.step-2');
+                var html                        = $stepTwo.html();
+
+                html                            = html.replace('{{thing}}',payload.thing);
+                $stepTwo.html(html);
+
+                for (var i=0;i<payload.options.length;i++){
+                    $('#favorite').append('<option value="'+payload.options[i].toLowerCase()+'">'+payload.options[i]+'</option>');
+                }
+
+                $stepTwo.fadeIn();
+            });
+        });
+
+        $(signupTurbine).bind('SignupExample|step|advance|3',function(event,payload){
+
+            $('.signup-step.step-2').fadeOut(function(){
+
+                $('.signup-step.step-3').fadeIn(function(){
+
+                    $('#done-signup').click(function(){
+                        app.completeSignup();
+                    });
+                });
+            });
+        });
+
+        $(signupTurbine).bind('SignupExample|signup|completed',function(event,payload){
+            app.completeSignup(payload.showThanks);
+        });
+    },
+
+    completeSignup : function(showThanks){
+
+        if (showThanks){
+            alert('Thanks for signing up!');
+        } else {
+            alert('Congrats! You get '+cartTurbine.getConfigVar('signupOfferPoints')+' SuperShopper points!');
+        }
+
+        app.logIn();
+        app.hideSignup();
+
+        $(cartTurbine).trigger('Signup|signup|completed');
     }
 };

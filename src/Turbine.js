@@ -709,6 +709,17 @@ if (typeof MINIFIED === 'undefined'){
             this.nextQuery                      = null;
             this.responses[query]               = this.getResponse(query);
 
+            /* If the query doesn't exist, we can't go any further */
+            if (!this.utils.isObjLiteral(this.workflow.queries[query])) {
+
+                this.report({
+                    handle                      : 'QUERY_DOES_NOT_EXIST',
+                    desc                        : '[' + this.name + '.exec()] ' + query + ' query does not exist'
+                });
+
+                return null;
+            }
+
             var responseName                    = this.responses[query];
             var responseObj                     = this.workflow.queries[query][responseName];
 

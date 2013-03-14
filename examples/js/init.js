@@ -1,30 +1,30 @@
-var turbineInit = {
+var cartInit = {
 
-    name                            : 'TurbineExample',
-    logLevel                        : 'DEBUG',
+    name                                        : 'CartExample',
+    logLevel                                    : 'INFO',
 
     queries : {
 
-        isCartEmpty                 : cart.isCartEmpty.bind(cart),
-        isLoggedIn                  : app.isLoggedIn.bind(app),
-        getsSpecialOffer            : cart.getsSpecialOffer.bind(cart),
-        whichItemMissing            : cart.getMissingItem.bind(cart)
+        isCartEmpty                             : cart.isCartEmpty.bind(cart),
+        isLoggedIn                              : app.isLoggedIn.bind(app),
+        getsSpecialOffer                        : cart.getsSpecialOffer.bind(cart),
+        whichItemMissing                        : cart.getMissingItem.bind(cart)
     },
 
     resets : {
 
         /* A reset can be a function ... */
-        isTurbineStarted : function(){
+        isCartStarted : function(){
             return true;
         },
 
         /* ... or just a default value */
-        isCheckoutStarted           : false
+        isCheckoutStarted                       : false
     },
 
     responses : {
-        isTurbineStarted            : true,
-        isCheckoutStarted           : false
+        isCartStarted                           : true,
+        isCheckoutStarted                       : false
     },
 
     workflow : {
@@ -32,27 +32,28 @@ var turbineInit = {
          config : {
 
             shortcuts : {
-                start                               : 'isTurbineStarted'
+                start                           : 'isCartStarted'
             },
 
             variables : {
-                specialOfferDiscount                : 10
+                specialOfferDiscount            : 10,
+                signupOfferPoints               : 100
             },
 
             always : {
 
                 timeout : {
-                    after                           : 300000,
+                    after                       : 300000,
                     publish : {
-                        message                     : "TurbineExample|issue|detected|WORKFLOW_GLOBAL_TIMEOUT"
+                        message                 : "CartExample|issue|detected|WORKFLOW_GLOBAL_TIMEOUT"
                     },
-                    then                            : "stop."
+                    then                        : "stop."
                 },
 
                 waitFor : [
                     {
-                        waitFor                     : 'Cart|checkout|started',
-                        then                        : 'isCheckoutStarted'
+                        waitFor                 : 'Cart|checkout|started',
+                        then                    : 'isCheckoutStarted'
                     }
                 ]
             }
@@ -70,33 +71,33 @@ var turbineInit = {
 
             isCartEmpty : {
                 yes : {
-                    publish                         : '+EMPTY_CART',
-                    then                            : '@start'
+                    publish                     : '+EMPTY_CART',
+                    then                        : '@start'
                 },
                 no : {
                     delay : {
-                        for                         : 2500,
+                        for                     : 2500,
                         publish : {
-                            message                 : 'TurbineExample|checkout|complete',
+                            message             : 'CartExample|checkout|completed',
                             using : {
-                                content             : 'success'
+                                content         : 'success'
                             }
                         },
-                        then                        : '@start'
+                        then                    : '@start'
                     }
                 }
             },
 
             APPLIED_DISCOUNT : {
-                handle                              : 'APPLIED_DISCOUNT',
-                description                         : '$specialOfferDiscount% discount applied',
-                discount                            : '$specialOfferDiscount'
+                handle                          : 'APPLIED_DISCOUNT',
+                description                     : '$specialOfferDiscount% discount applied',
+                discount                        : '$specialOfferDiscount'
             },
 
             EMPTY_CART : {
-                message                             : 'TurbineExample|issue|detected',
+                message                         : 'CartExample|issue|detected',
                 using : {
-                    content                         : 'emptyCart'
+                    content                     : 'emptyCart'
                 }
             }
         }
@@ -111,13 +112,13 @@ var queries = {
      */
     loginBeforeCart : {
 
-        isTurbineStarted : {
+        isCartStarted : {
             yes : {
                 waitFor                         : 'Cart|item|added',
                 then                            : 'isLoggedIn'
             },
             no : {
-                then                            : 'stop'
+                then                            : 'stop.'
             }
         },
 
@@ -137,13 +138,26 @@ var queries = {
             },
             no : {
                 publish : {
-                    message                     : 'TurbineExample|issue|detected',
+                    message                     : 'CartExample|issue|detected',
                     using : {
                         content                 : 'loginRequiredBeforeCart',
                         emptyCart               : true
                     }
                 },
-                then                            : '@start'
+                waitFor                         : 'Cart|item|added',
+                repeat : {
+                    limit                       : 3,
+                    publish : {
+                        message                 : 'CartExample|issue|detected',
+                        using : {
+                            content             : 'loginRequiredBeforeCart',
+                            emptyCart           : true,
+                            forceSignup         : true
+                        }
+                    },
+                    waitFor                     : 'Signup|signup|completed',
+                    then                        : '@start'
+                }
             }
         },
 
@@ -153,8 +167,8 @@ var queries = {
             yes : {
                 publish : {
                     message : [
-                        'TurbineExample|console|added',
-                        'TurbineExample|specialOffer|granted'
+                        'CartExample|console|added',
+                        'CartExample|specialOffer|granted'
                     ],
                     using : {
                         content                 : 'specialOffer',
@@ -176,7 +190,7 @@ var queries = {
      */
     loginBeforeCheckout : {
 
-        isTurbineStarted : {
+        isCartStarted : {
             yes : {
                 waitFor                         : 'Cart|item|added',
                 then                            : 'gotSpecialOffer'
@@ -199,8 +213,8 @@ var queries = {
             yes : {
                 publish : {
                     message : [
-                        'TurbineExample|console|added',
-                        'TurbineExample|specialOffer|granted'
+                        'CartExample|console|added',
+                        'CartExample|specialOffer|granted'
                     ],
                     using : {
                         content                 : 'specialOffer',
@@ -225,7 +239,7 @@ var queries = {
                 timeout : {
                     after                       : 2000,
                     publish : {
-                        message                 : 'TurbineExample|item|missing',
+                        message                 : 'CartExample|item|missing',
                         using : {
                             content             : 'addDualshock'
                         }
@@ -242,7 +256,7 @@ var queries = {
                 timeout : {
                     after                       : 2000,
                     publish : {
-                        message                 : 'TurbineExample|item|missing',
+                        message                 : 'CartExample|item|missing',
                         using : {
                             content             : 'addCharger'
                         }
@@ -272,7 +286,7 @@ var queries = {
             },
             no : {
                 publish : {
-                    message                     : 'TurbineExample|issue|detected',
+                    message                     : 'CartExample|issue|detected',
                     using : {
                         content                 : 'loginRequired'
                     }
@@ -282,5 +296,116 @@ var queries = {
         },
 
         isCartEmpty                             : '+isCartEmpty'
+    }
+};
+
+
+var signupInit = {
+
+    name                                        : 'SignupExample',
+    logLevel                                    : 'DEBUG',
+
+    queries : {
+
+    },
+
+    resets : {
+        isSignupStarted                         : true
+    },
+
+    responses : {
+        isSignupStarted                         : true
+    },
+
+    workflow : {
+
+        queries : {
+
+            isSignupStarted : {
+                yes : {
+                    waitFor                     : 'Signup|gender|selected',
+                    then                        : 'whichGender'
+                },
+                no : {
+                    then                        : 'stop.'
+                }
+            },
+
+            whichGender : {
+                male : {
+                    publish : {
+                        message                 : 'SignupExample|step|advance|2',
+                        using : {
+                            thing               : 'sport',
+                            options : [
+                                'Baseball',
+                                'Football',
+                                'Basketball',
+                                'Hockey'
+                            ]
+                        }
+                    },
+                    waitFor                     : 'Signup|favorite|selected',
+                    then                        : 'likes'
+                },
+                female : {
+                    publish : {
+                        message                 : 'SignupExample|step|advance|2',
+                        using : {
+                            thing               : 'animal',
+                            options : [
+                                'Cat',
+                                'Dog',
+                                'Bird',
+                                'Horse'
+                            ]
+                        }
+                    },
+                    waitFor                     : 'Signup|favorite|selected',
+                    then                        : 'likes'
+                },
+                other : {
+                    publish : {
+                        message                 : 'SignupExample|step|advance|2',
+                        using : {
+                            thing               : 'breakfast',
+                            options : [
+                                'Pancakes',
+                                'Bacon',
+                                'Waffles',
+                                'Eggs'
+                            ]
+                        }
+                    },
+                    waitFor                     : 'Signup|favorite|selected',
+                    then                        : 'likes'
+                }
+            },
+
+            likes : {
+                basketball                      : '+advanceToStep3',
+                dog                             : '+advanceToStep3',
+                eggs                            : '+advanceToStep3',
+                default : {
+                    publish : {
+                        message                 : 'SignupExample|signup|completed',
+                        using : {
+                            showThanks          : true
+                        }
+                    },
+                    then                        : 'stop.'
+                }
+            }
+        },
+
+        mixins : {
+
+            advanceToStep3 : {
+                publish : {
+                    message                 : 'SignupExample|step|advance|3'
+                },
+                then                        : 'stop.'
+            }
+        }
     }
 };
