@@ -111,8 +111,6 @@ if (typeof MINIFIED === 'undefined'){
             global                              : null
         };
 
-        this.api                                = this.getPublicAPI();
-
         if (typeof initObj.init === 'function'){
             initObj.init();
         }
@@ -148,17 +146,6 @@ if (typeof MINIFIED === 'undefined'){
             INFO                                : 3,
             DEBUG                               : 4,
             TRACE                               : 5
-        },
-
-        getPublicAPI : function(){
-
-            return {
-                getConfigVar                    : this.getConfigVar.bind(this),
-                setResponse                     : this.setResponse.bind(this),
-                start                           : this.start.bind(this),
-                stop                            : this.stop.bind(this),
-                isStarted                       : this.isStarted.bind(this)
-            }
         },
 
         /**

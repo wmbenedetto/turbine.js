@@ -24,7 +24,7 @@ var app = {
 
             $('#workflow-options').slideUp(function(){
                 $('#example').slideDown(function(){
-                    cartTurbine.api.start();
+                    cartTurbine.start();
                 });
             });
         });
@@ -181,7 +181,7 @@ var app = {
     startSignup : function(){
         
         window.signupTurbine                     = new Turbine(signupInit);
-        signupTurbine.api.start();
+        signupTurbine.start();
 
         this.bindSignupUIHandlers();
         this.addSignupTurbineListeners();

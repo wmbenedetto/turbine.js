@@ -1,7 +1,7 @@
 var cartInit = {
 
     name                                        : 'CartExample',
-    logLevel                                    : 'INFO',
+    logLevel                                    : 'TRACE',
 
     queries : {
 
