@@ -39,6 +39,8 @@ Responses can be set two ways: via query functions in `initObj.queries`, or via 
 
 ### Resets
 
+### Events
+
 ### Workflow
 
 ### Shortcuts
@@ -58,12 +60,23 @@ The documentation below has more detail about what each property means, but here
 ```javascript
 // Create initialization object
 var initObj = {
-    name       : '',   // optional
-    logLevel   : '',   // optional
-    queries    : {},   // optional
-    responses  : {},   // optional
-    resets     : {},   // optional
-    workflow   : {}    // REQUIRED
+    
+    // REQUIRED
+    workflow    : {},           
+    
+    // OPTIONAL
+    name        : '',           
+    logLevel    : '',           
+    queries     : {},          
+    responses   : {},           
+    resets      : {},           
+    init        : function(){}, 
+    log         : function(){}, 
+    publish     : function(){}, 
+    listen      : function(){}, 
+    remove      : function(){}, 
+    report      : function(){}, 
+    compare     : function(){}  
 };
 
 // Instantiate new Turbine instance using initObj
@@ -71,6 +84,10 @@ var turbine = new Turbine(initObj);
 ```
 
 Now let's look at what each of these properties means.
+
+---
+
+### workflow
 
 ---
 
@@ -212,7 +229,31 @@ If no reset for a query is defined in `initObj.resets`, then the response is not
 
 ---
 
-### workflow
+### init
+
+---
+
+### log
+
+---
+
+### publish 
+
+---
+
+### listen 
+
+---
+
+### remove 
+
+---
+
+### report
+
+--- 
+
+### compare
 
 ---
 
