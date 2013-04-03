@@ -208,7 +208,7 @@ When this happens, it may be necessary to reset some of the responses that are b
 
 To do this you could either set `initObj.resets.isStepThreeComplete = false`, or your could set it to a function to be  called to determine the reset value, i.e. `initObj.resets.isStepThreeComplete = app.isStepThreeComplete.bind(app)`.
 
-If no reset is defined in `initObj.resets`, then the response is not reset during a rewind.
+If no reset for a query is defined in `initObj.resets`, then the response is not reset during a rewind.
 
 ---
 
