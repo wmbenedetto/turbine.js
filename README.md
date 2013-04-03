@@ -12,6 +12,7 @@ In the meantime, see /examples (particularly /examples/js/init.js) for working e
 
 ### Declarative
 ### Expressive
+### Event-driven
 ### Decoupled
 ### Modular
 ### Reusable
@@ -38,25 +39,57 @@ In the meantime, see /examples (particularly /examples/js/init.js) for working e
 
 ### Workflow
 
-#### Config
+### Shortcuts
 
-##### Shortcuts
+### Variables
 
-##### Variables
+### Always
 
-##### Always
+### Mixins
+
+## Initializing Turbine
+
+### Queries
+
+### Responses
+
+### Resets
+
+### Config
+
+#### Shortcuts
+
+#### Variables
+
+#### Always
 
 * timeout
 * waitFor
 
-#### Queries
+### Workflow
 
-##### Responses
+### Mixins
+
+## Building a workflow
+
+### Queries
+
+#### Responses
+
+* yes
+* no
+* *values*
+* default
+
+#### Each response
 
 * publish
   * message
   * using
 * waitFor
+* then
+  * stop.
+  * kill!
 * repeat
   * limit
   * publish
@@ -71,11 +104,6 @@ In the meantime, see /examples (particularly /examples/js/init.js) for working e
   * for
   * publish
   * then
-* then
-
-default
-
-#### Mixins
 
 ## Examples
 
@@ -92,6 +120,10 @@ default
 ---
 ### setResponse(query, response)
 ---
+
+## FAQ
+
+### Chaining/nesting workflows?
 
 ## Questions? Bugs? Suggestions?
 
