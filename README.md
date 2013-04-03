@@ -35,6 +35,8 @@ In the meantime, see /examples (particularly /examples/js/init.js) for working e
 
 ### Responses
 
+Responses can be set two ways: via query functions in `initObj.queries`, or via the `setResponse()` method.
+
 ### Resets
 
 ### Workflow
@@ -51,14 +53,14 @@ In the meantime, see /examples (particularly /examples/js/init.js) for working e
 
 Each instance of Turbine is initialized by calling the Turbine constructor and passing it a single `initObj` object literal.
 
-The documentation below has more detail about what each property means, but here is the basic structure. Note that only `queries` and `workflow` are required; the rest are optional.
+The documentation below has more detail about what each property means, but here is the basic structure. Note that only `workflow` is required; the rest are optional.
 
 ```javascript
 // Create initialization object
 var initObj = {
     name       : '',   // optional
     logLevel   : '',   // optional
-    queries    : {},   // REQUIRED
+    queries    : {},   // optional
     responses  : {},   // optional
     resets     : {},   // optional
     workflow   : {}    // REQUIRED
@@ -74,7 +76,7 @@ Now let's look at what each of these properties means.
 
 ### name 
 
-*[OPTIONAL]* Gives your Turbine instance a unique name for logging purposes. 
+*Gives your Turbine instance a unique name for logging purposes.*
 
 This can be useful when you have multiple Turbine instances running simultaneously (or sequentially) and you want to disambiguate the log messages from each instance. 
 
@@ -100,7 +102,7 @@ If no `name` property is set, then the default value will be "Turbine", i.e. `[T
 
 ### logLevel
 
-*[OPTIONAL]* Determines the verbosity of the logs being output to the console.
+*Determines the verbosity of the logs being output to the console.*
 
 **Logging is only available in the non-minified version of Turbine.js.** In the minified version, all logging functionality is stripped out to reduce file size.
 
@@ -119,9 +121,9 @@ The default value is `ERROR`.
 
 ### queries
 
-*[REQUIRED]* Object containing functions used to resolve queries and return responses.
+*Object containing functions used to resolve queries and return responses.*
 
-The `queries` object is a collection of key:value pairs. Each key is the name of a query that appears in your workflow; each corresponding value is a reference to a function that will return the result of the query (a.k.a. the response).
+The `initObj.queries` object is a collection of key:value pairs. Each key is the name of a query that appears in your workflow; each corresponding value is a reference to a function that will return the result of the query (a.k.a. the response).
 
 For example:
 
@@ -138,21 +140,21 @@ var initObj = {
 }
 ```
 
-As Turbine steps through each query in your workflow, it executes the corresponding function defined in `initObj.queries`. The return value of that query function tells Turbine which response to process.
+As Turbine steps through each query in your workflow, it looks for a corresponding function defined in `initObj.queries`. If found, the query function is executed. The return value tells Turbine which response to process.
 
-If Turbine encounters a query in your workflow that is not defined in `initObj.queries`, it will throw a fatal error. Therefore, you need to be sure that every query in your workflow is accounted for in `initObj.queries`.
+Defining query functions here promotes decoupling of your workflow from the rest of your app. The functions don't need to know anything about the workflow or how all the pieces of the app fit together -- they just need to be able to return a valid response, and Turbine (along with your workflow) does the rest.
 
 #### Function references
 
-It's important to note that the functions in `initObj.queries` are just references -- they are not actually called. You can see this most clearly with the `isFoo : someGlobalFunction` example. Notice that `someGlobalFunction` does not have parentheses after it. That's what makes it a reference instead of an executed function.
+It's important to note that the functions in `initObj.queries` are just references -- they are not actually called here. You can see this most clearly with the `isFoo : someGlobalFunction` example. Notice that `someGlobalFunction` does not have parentheses after it. That's what makes it a reference instead of an executed function.
 
 #### Binding functions
 
-So what's this `bind` stuff at the end of the other functions? 
+So what's this `bind` stuff at the end of the other functions? In a nutshell, `bind` tells the function what the scope of `this` should be when it's used inside the function. 
 
-`bind` is actually a feature of the Function prototype in ECMAScript 5 (JavaScript 1.8.5), and is supported by all modern browsers (see https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Function/bind). In other words, everything but IE8. Never fear though ... Turbine includes an implementation of `bind`, so you can use it even in browsers that don't technically support it.
+`bind` is actually a feature of the Function prototype in ECMAScript 5 (JavaScript 1.8.5), and is supported by all modern browsers (see https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Function/bind). In other words, everything but IE8. 
 
-What `bind` does is tell the function what the scope of `this` should be when it is used inside the function. 
+Never fear though ... Turbine includes an implementation of `bind`, so you can use it even in browsers that don't technically support it.
 
 **To ensure that your function is always being called with `this` scoped correctly, you should always use `bind` when defining your query functions.**
 
@@ -160,10 +162,53 @@ What `bind` does is tell the function what the scope of `this` should be when it
 
 ### responses
 
+*Object containing default responses to workflow queries.*
+
+The `responses` object is a collection of key:value pairs. Each key is the name of a query that appears in your workflow; each corresponding value is the default response for that query.
+
+For example:
+
+```javascript
+var initObj = {
+    
+    responses : {
+        isCartEmpty         : true,
+        whichItemMissing    : 'playstation'
+    }
+}
+```
+
+Responses are `false` by default, so `initObj.responses` is your chance to define a non-false default response for a query.
+
+When Turbine is instantiated, it imports these default responses. If no query function is defined in `initObj.queries`, and the response isn't explicitly set in your app via the `setResponse()` method, then the value from `initObj.responses` is used.
+
 ---
 
 ### resets
 
+*Object containing functions or values used to reset query responses when rewinding a workflow*
+
+The `resets` object is a collection of key:value pairs. Each key is the name of a query that appears in your workflow; each corresponding value is either a function or a value to use when rewinding the workflow.
+
+For example:
+
+```javascript
+var initObj = {
+    
+    resets : {
+        isCartEmpty         : cart.isCartEmpty.bind(cart),
+        isCheckoutStarted   : true
+    }
+}
+```
+
+Sometimes Turbine executes a query response that requires it to go backwards in the workflow, to an earlier query. For example, a user may get several steps through a checkout process, then decides to backtrack a few steps to remove a product from the cart.
+
+When this happens, it may be necessary to reset some of the responses that are being rewound. For example, if a user is on Step 4 of the checkout, and wants to go back to Step 2, you may need to reset the value of a `isStepThreeComplete` query to false.
+
+To do this you could either set `initObj.resets.isStepThreeComplete = false`, or your could set it to a function to be  called to determine the reset value, i.e. `initObj.resets.isStepThreeComplete = app.isStepThreeComplete.bind(app)`.
+
+If no reset is defined in `initObj.resets`, then the response is not reset during a rewind.
 ---
 
 ### workflow
