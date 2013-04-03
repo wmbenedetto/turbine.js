@@ -17,7 +17,7 @@ var app = {
             var querySet                        = $('input[name=loginBefore]:checked').val();
             cartInit.workflow.queries           = queries[querySet];
 
-            window.cartTurbine                      = new Turbine(cartInit);
+            window.cartTurbine                  = new Turbine(cartInit);
 
             self.bindCartUIHandlers();
             self.addCartTurbineListeners();

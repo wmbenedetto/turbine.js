@@ -91,6 +91,18 @@ if (typeof MINIFIED === 'undefined'){
             throw new Error(errorMsg);
         }
 
+        if (!MINIFIED){
+
+            this.logLevels = {
+                OFF                             : 0,
+                ERROR                           : 1,
+                WARN                            : 2,
+                INFO                            : 3,
+                DEBUG                           : 4,
+                TRACE                           : 5
+            };
+        }
+
         this.globalListeners                    = {};
         this.globalTimeoutAllowed               = false;
         this.logLevel                           = initObj.logLevel  || 'ERROR';
@@ -120,6 +132,9 @@ if (typeof MINIFIED === 'undefined'){
         this.importWorkflow(initObj);
     };
 
+    /**
+     * Turbine class prototype
+     */
     Turbine.prototype = {
 
         defaultGlobalTimeout                    : 3600000, // one hour, in milliseconds
@@ -138,15 +153,7 @@ if (typeof MINIFIED === 'undefined'){
         timers                                  : null,
         waitingFor                              : null,
         workflow                                : null,
-
-        logLevels : {
-            OFF                                 : 0,
-            ERROR                               : 1,
-            WARN                                : 2,
-            INFO                                : 3,
-            DEBUG                               : 4,
-            TRACE                               : 5
-        },
+        logLevels                               : null,
 
         /**
          * Imports valid functions specified in initObj to Turbine
