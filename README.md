@@ -1,5 +1,22 @@
-turbine.js - COMING SOON
-==========
+### Docs in progress. See /examples (particularly /examples/js/init.js) for working examples
+
+# Turbine
+
+## Why Turbine?
+
+## Core principles
+
+## Basic features
+
+## Advanced features
+
+## Quick install
+
+## Quick start
+
+## Examples
+
+## API
 
 
 ## Questions? Bugs? Suggestions?
