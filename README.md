@@ -49,11 +49,60 @@ In the meantime, see /examples (particularly /examples/js/init.js) for working e
 
 ## Initializing Turbine
 
+Each instance of Turbine is initialized by calling the Turbine constructor and passing it a single `initObj` object literal.
+
+The documentation below has more detail about what each property means, but here is the basic structure. Note that only `queries` and `workflow` are required; the rest are optional.
+
+```javascript
+// Create initialization object
+var initObj = {
+    name       : '',   // optional
+    logLevel   : '',   // optional
+    queries    : {},   // REQUIRED
+    responses  : {},   // optional
+    resets     : {},   // optional
+    workflow   : {}    // REQUIRED
+};
+
+// Instantiate new Turbine instance using initObj
+var turbine = new Turbine(initObj);
+```
+
+Now let's look at what each of these properties means.
+
+### Name
+
+The `name` is an optional property that allows you to give your Turbine instance a unique name for logging purposes. 
+
+This can be useful when you have multiple Turbine instances running simultaneously (or sequentially) and you want to disambiguate the log messages from each instance. 
+
+For example, if `initObj.name` is set to "CartExample", then the console logs will look like:
+
+```
+[CartExample.start()] Starting Turbine
+[CartExample.publish()] Publishing message: Turbine|workflow|started
+[CartExample.publish()] Publishing message: Turbine|workflow|waiting 
+```
+
+If you were to spin up another Turbine instance with an `initObj.name` of "SignupExample", you'd be able to tell the difference from CartExample:
+
+```
+[CartExample.publish()] Publishing message: Turbine|workflow|waiting 
+[SingupExample.start()] Starting Turbine
+[SingupExample.publish()] Publishing message: Turbine|workflow|started
+```
+
+If no `name` property is set, then the default value will be "Turbine", i.e. `[Turbine.start()] Starting Turbine`
+
+### Log level
+
 ### Queries
 
 ### Responses
 
 ### Resets
+
+## Building a workflow
 
 ### Config
 
@@ -66,11 +115,7 @@ In the meantime, see /examples (particularly /examples/js/init.js) for working e
 * timeout
 * waitFor
 
-### Workflow
-
 ### Mixins
-
-## Building a workflow
 
 ### Queries
 
