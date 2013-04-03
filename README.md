@@ -1,4 +1,4 @@
-### Docs in progress. See /examples (particularly /examples/js/init.js) for working examples
+### NOTE: Docs in progress. See /examples (particularly /examples/js/init.js) for working examples
 
 # Turbine
 
@@ -18,6 +18,17 @@
 
 ## API
 
+---
+### start()
+---
+### isStarted()
+---
+### stop()
+---
+### getConfigVar(varName)
+---
+### setResponse(query, response)
+---
 
 ## Questions? Bugs? Suggestions?
 
