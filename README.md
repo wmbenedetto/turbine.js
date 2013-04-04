@@ -89,11 +89,17 @@ Now let's look at what each of these properties means.
 
 ### workflow
 
+*[OBJECT] Defines the control flow of your application*
+
+The workflow is the jet fuel that powers Turbine. It tells your app what to do, and where to go next after doing it.
+
+Since workflows are a whole topic unto themselves, see the [Building a workflow](#building-a-workflow) section for more details.
+
 ---
 
 ### name 
 
-*Gives your Turbine instance a unique name for logging purposes.*
+*[STRING] Gives your Turbine instance a unique name for logging purposes.*
 
 This can be useful when you have multiple Turbine instances running simultaneously (or sequentially) and you want to disambiguate the log messages from each instance. 
 
@@ -119,7 +125,7 @@ If no `name` property is set, then the default value will be "Turbine", i.e. `[T
 
 ### logLevel
 
-*Determines the verbosity of the logs being output to the console.*
+*[STRING] Determines the verbosity of the logs being output to the console.*
 
 **Logging is only available in the non-minified version of Turbine.js.** In the minified version, all logging functionality is stripped out to reduce file size.
 
@@ -138,7 +144,7 @@ The default value is `ERROR`.
 
 ### queries
 
-*Object containing functions used to resolve queries and return responses.*
+*[OBJECT] Contains functions used to resolve queries and return responses.*
 
 The `initObj.queries` object is a collection of key:value pairs. Each key is the name of a query that appears in your workflow; each corresponding value is a reference to a function that will return the result of the query (a.k.a. the response).
 
@@ -179,7 +185,7 @@ Never fear though ... Turbine includes an implementation of `bind`, so you can u
 
 ### responses
 
-*Object containing default responses to workflow queries.*
+*[OBJECT] Contains default responses to workflow queries.*
 
 The `responses` object is a collection of key:value pairs. Each key is the name of a query that appears in your workflow; each corresponding value is the default response for that query.
 
@@ -203,7 +209,7 @@ When Turbine is instantiated, it imports these default responses. If no query fu
 
 ### resets
 
-*Object containing functions or values used to reset query responses when rewinding a workflow*
+*[OBJECT] Contains functions or values used to reset query responses when rewinding a workflow*
 
 The `resets` object is a collection of key:value pairs. Each key is the name of a query that appears in your workflow; each corresponding value is either a function or a value to use when rewinding the workflow.
 
@@ -231,17 +237,69 @@ If no reset for a query is defined in `initObj.resets`, then the response is not
 
 ### init
 
+*[FUNCTION] Initialization function called at the end of the Turbine constructor*
+
+The `init` function is an optional function that can be defined to be called once Turbine's constructor is complete. It is passed one argument: the Turbine instance that was just instantiated. This might be useful if you want your app to wait for Turbine to be fully instantiated before doing something.
+
 ---
 
 ### log
+
+*[FUNCTION] Custom logging function*
+
+By default, Turbine outputs all its logs via the standard `console` methods: `log`, `warn`, and `error`. If you would rather send the logs to some other function, you can define it here and Turbine will use that instead.
+
+Note that log messages are only output by the non-minified Turbine.js. Logging is stripped out of the minified version to reduce file size.
 
 ---
 
 ### publish 
 
+*[FUNCTION] Function to use when publishing events*
+
+By default, Turbine will use `jQuery.trigger()` to publish events. If you would rather use some other event publishing method, such as `Backbone.Events.trigger()`, you can define that method here.
+
+Turbine will pass your `publish` method two arguments: 
+
+* `message` *[String] Event to publish*
+* `payload` *[Object] Optional data object*
+
+Your events library may not be expecting those arguments, or in that order, so you may have to wrap your library's function in your own function that translates those arguments into something your library understands.
+
+For example, maybe your fictional PubSub library requires a single object literal defining `event` and `data` instead of two arguments for `message` and `payload`. Then you might wrap it like this:
+
+```javascript
+var initObj = {
+    
+    publish : function(message,payload){
+        
+        yourPubSub.trigger({
+            event : message,
+            data : payload
+        });
+    }
+}
+```
+
 ---
 
 ### listen 
+
+*[FUNCTION] Function to use when listening for events*
+
+By default, Turbine will use `jQuery.on()` to listen for events. If you would rather use some other event listener, such as `Backbone.Events.on()`, you can define that method here.
+
+Turbine will pass your `listen` method two arguments: 
+
+* `message` *[String] Event to listen for*
+* `handler` *[Function] Function to call when event is triggered*
+
+When the `handler` is triggered, it will be passed two arguments:
+
+* `message` *[String] Event that triggered the handler*
+* `payload` *[Object] Optional data object*
+
+Like `publish`, you may need to wrap your own event listener method in a custom function to translate these arguments into something your listener understands.
 
 ---
 
