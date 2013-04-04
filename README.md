@@ -245,7 +245,11 @@ When Turbine executes a query and 1.) no query function has been defined, and 2.
 
 Workflows don't always move inexorably forward in a straight line. Sometimes they need to backtrack, repeat, start over, etc. When this happens, you may need to reset some of the responses you previously set.
 
-For example, consider a login form that limits a user to 3 login attempts before locking the login form. By default, the user can attempt to login, so the default response for `canAttemptLogin` is true.
+Just like query functions and default responses, resets are defined in the init object passed to the Turbine constructor. A reset can be either a function reference, or a simple value.
+
+For example, consider a login form that limits a user to 3 login attempts before locking the login form. By default, the user can attempt to login, so the default response for `canAttemptLogin` is true. 
+
+In addition, a reset function is defined for the `canAttemptLogin` query. This will be executed whenever Turbine moves backwards through the workflow past `canAttemptLogin`.
 
 ```javascript
 var initObj = {
@@ -298,20 +302,11 @@ var workflow = {
 }
 ```
 
-The key here is the rewind: whenever we go backwards in the workflow, Turbine checks to see if a reset has been defined for each query we have already passed. In this example, we defined a reset function for `canAttemptLogin` in our init object:
+The key here is the rewind: whenever we go backwards in the workflow, Turbine checks to see if a reset function (or value) has been defined for each query we have already passed. 
 
-```javascript
-var initObj = {
-    responses : {
-        canAttemptLogin : true
-    },
-    resets : {
-        canAttemptLogin : user.hasLoginAttemptsRemaining.bind(user)
-    }
-};
-```
+In this example, we defined a reset function for `canAttemptLogin` in our init object. Therefore, each time we rewind from `isLoginValid` back to `canAttemptLogin`, Turbine calls the `user.hasLoginAttemptsRemaining()` function. 
 
-Therefore, each time we rewind from `isLoginValid` back to `canAttemptLogin`, Turbine calls the `user.hasLoginAttemptsRemaining()` function. The first time through, this will return true. Second time, true. Third time, true. 
+The first time through, this will return true. Second time, true. Third time, true. 
 
 But when we rewind the fourth time, it will return *false.* So when the `canAttemptLogin` query is executed for the fourth time, it will follow the "no" response instead, locking the form against further attempts.
 
@@ -319,23 +314,68 @@ But when we rewind the fourth time, it will return *false.* So when the `canAtte
 
 ### Events/Messages
 
----
+Turbine is an event-driven workflow engine. In the Turbine world, events are called **messages**. Turbine both **publishes** messages and **waits for** messages.
 
-### Shortcuts
+When Turbine publishes a message, the expectation is that your app is listening for that message. When your app gets the message, it goes off and does whatever it needs to do.
 
----
+When your app is finished doing its thing, it publishes its own message saying it's done.
 
-### Variables
+If Turbine is waiting for that message, it will pick up where it left off, executing the next query in the workflow.
 
----
+By using `publish` and `waitFor` together like this, Turbine is basically telling your app, "Hey, go do some stuff, and let me know when you're done. Then I'll keep going."
 
-### Always
+Of course, there's no requirement that you wait for a return message after you publish. You can just publish and move on through the workflow. Likewise, you can wait for a message without having published one previously.
 
----
+```javascript
+var workflow = {
+    
+    queries : {
+        
+        isAppStarted : {
+            
+            // You can wait for a message without having published one previously
+            yes : {
+                waitFor : 'App.stepOne.complete',
+                then : 'isAfterMidnight'
+            },
+            no : {
+                // do stuff
+            }
+        },
 
-### Mixins
+        isAfterMidnight : {
+            
+            // You can publish a message without waiting for a return message
+            yes : {
+                publish : {
+                    message : 'App.theme.update.DARK_BACKGROUND'
+                },
+                then : 'isStepOneComplete'
+            },
+            no : {
+                // do stuff
+            }
+        },
+        
+        isStepOneComplete : {
+            
+            // You can publish a message then wait for a return message
+            yes : {
+                publish : {
+                    message : 'App.stepTwo.show'
+                },
+                waitFor : 'App.stepTwo.complete'
+                then : 'stop.'
+            },
+            no : {
+                // do stuff
+            }
+        },
+    }
+};
+```
 
----
+.
 
 ## Initializing Turbine
 
@@ -652,8 +692,7 @@ var workflow = {
 
 Your `report` function would be passed whatever is defined in the workflow. You can then use that data to report the issue however your system requires.
 
---- 
-
+.
 
 ## Building a workflow
 
