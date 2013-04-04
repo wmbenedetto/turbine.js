@@ -174,7 +174,7 @@ It's important to note that the functions in `initObj.queries` are just referenc
 
 So what's this `bind` stuff at the end of the other functions? In a nutshell, `bind` tells the function what the scope of `this` should be when it's used inside the function. 
 
-`bind` is actually a feature of the Function prototype in ECMAScript 5 (JavaScript 1.8.5), and is supported by all modern browsers (see https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Function/bind). In other words, everything but IE8. 
+`bind` is actually a [feature](https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Function/bind) of the Function prototype in ECMAScript 5 (JavaScript 1.8.5), and is supported by all modern browsers. In other words, everything but IE8. 
 
 Never fear though ... Turbine includes an implementation of `bind`, so you can use it even in browsers that don't technically support it.
 
