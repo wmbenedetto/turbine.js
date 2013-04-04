@@ -35,7 +35,7 @@ In order to use Turbine, it's important to first define some key concepts. Once 
 
 The workflow is the jet fuel that powers Turbine. It's an expressive, declarative syntax for defining the control flow of your application. It allows you to define all the logical branching of your app in a single document, in a format that is both human- and machine-readable. 
 
-A workflow is essentially a series of questions (queries) and answers (reponses). It's almost like a conversation between your app and Turbine.
+A workflow is essentially a series of questions (queries) and answers (reponses). It's almost like a conversation between Turbine and your app.
 
 >**Turbine:** Is the user signed up?
 >
@@ -63,7 +63,7 @@ A workflow is essentially a series of questions (queries) and answers (reponses)
 >
 >**Turbine:** Great! Let him in. We're done!
 
-Now let's look at the same "conversation" expressed as a workflow.
+Now let's look at the same "conversation" expressed as a workflow:
 
 ```javascript
 var workflow = {
@@ -72,18 +72,17 @@ var workflow = {
         
         // Turbine: Is the user signed up?
         isUserSignedUp : {
-            
             // Your app: Nope.
             no : {
-                
                 // Turbine: Okay. Ask him to sign up. I'll wait.
                 publish : {
                     message : 'Signup.stepOne.show'
                 },
                 waitFor : 'Signup.stepOne.submitted',
                 
-                // Your app displays a signup form. The user fills it in and clicks Submit.
-                // This publishes a Signup.stepOne.submitted event. Which is equivalent to:
+                // Your app is listening for a Signup.stepOne.show message. It knows to handle
+                // that by displaying a signup form. The user fills it in and clicks Submit.
+                // This publishes a Signup.stepOne.submitted message. Which is equivalent to:
                 //
                 // Your app: Alrighty, he signed up.
                 // 
@@ -98,18 +97,18 @@ var workflow = {
         
         // Turbine: Great. Is he over 18?
         isOver18 : {
-            
             // Your app: No, he's only 13.
             no : {
-                
                 // Turbine: Damn. Ask him for his parent's email, then let me know.
                 publish : {
                     message : 'Signup.parentEmail.show'
                 },
                 waitFor : 'Signup.parentEmail.submitted',
                 
-                // Your app asks for the parent's email. The user submits it.
-                // This publishes a Signup.parentEmail.submitted event. Which is equivalent to:
+                // Your app is listening for a Signup.parentEmail.show message. It knows to handle
+                // that by displaying a form that asks the user for his parent's email address.
+                // The user enters the email and clicks Submit. This publishes a Signup.stepOne.submitted message. 
+                // Which is equivalent to:
                 //
                 // Your app: I got the parent's email.
                 // 
@@ -124,10 +123,8 @@ var workflow = {
         
         // Turbine: Is is valid?
         isParentEmailValid : {
-            
             // Your app: Yep, looks good.
             yes : {
-                
                 // Turbine: Great! Let him in. We're done!
                 publish : {
                     message : 'Signup.form.complete'
@@ -146,25 +143,115 @@ var workflow = {
 };
 ```
 
-#### Queries
+---
 
+### Queries
 
+Queries are the questions that Turbine asks your app. Therefore, a query is a string typically written as a question, such as:
 
-#### Responses
+* isUserLoggedIn
+* canOpenGoldDoor
+* whichErrorCode
+* howManyStars
 
-Responses can be set two ways: via query functions in `initObj.queries`, or via the `setResponse()` method.
+When you instantiate an instance of Turbine, you can (but don't have to) define functions from your app that Turbine can use to execute the query.
+
+For example, if your app only lets magicians open gold doors, you might define a query function like:
+
+```javascript
+var initObj = {
+    queries : {
+        canOpenGoldDoor : user.isMagician.bind(user)
+    }  
+};
+```
+
+When Turbine gets to the `canOpenGoldDoor` query in your workflow, it will execute `user.isMagician()`, which will return `true` or `false`. This is the "response."
+
+---
+
+### Responses
+
+Responses are the answers your app returns for queries.
+
+Responses are often simple booleans: true or false get converted to "yes" or "no" by Turbine. However, the response really can be any arbitrary string or number. Responses for the query examples above might look like:
+
+* isUserLoggedIn
+    * yes
+    * no
+* canOpenGoldDoor
+    * yes
+    * no
+* whichErrorCode
+    * INVALID_EMAIL
+    * INVALID_CREDIT_CARD
+    * MUST_CHECK_TERMS_BOX
+* howManyStars
+    * 1
+    * 2
+    * 3
+    * 4
+    * 5
+
+Responses can be defined in a couple of ways.    
+
+#### Via query functions
+
+The most obvious way to get a response is as a value returned by the query function. When the `canOpenGoldDoor` query executes the `user.isMagician()` function, whatever that function returns gets set as the response to `canOpenGoldDoor`: true, which gets converted to "yes".
+
+#### Via `setResponse()`
+
+The second way a response can be defined is via Turbine's `setResponse()` method. This isn't really the preferred way of doing things, since it requires more tightly coupling your app with Turbine and your workflow. However, it's an option you can use if you need it.
+
+For example, say you have some form validation logic. You could do something like:
+
+```javascript
+if (user.email.indexOf('@') < 0){
+    turbine.setResponse('whichErrorCode','INVALID_EMAIL');
+}
+```
+When Turbine reaches the `whichErrorCode` query, it will first check if a query function has been defined. It hasn't been, so Turbine then checks to see which response was set: `INVALID EMAIL`.
+
+#### Via initialization object
+
+When Turbine is instantiated, you can define default responses in the init object passed to the constructor. Since Turbine defaults all responses to false, you only need to define defaults for non-false values.
+
+```javascript
+var initObj = {
+    responses : {
+        canOpenGoldDoor : true,
+        howManyStars : 3
+    }  
+};
+```
+
+When Turbine executes a query and 1.) no query function has been defined, and 2.) no reponse has been set via `setResponse()`, then it will use the response from the init object (or false if none is defined).
+
+---
 
 ### Resets
 
+---
+
 ### Events/Messages
+
+---
 
 ### Shortcuts
 
+---
+
 ### Variables
+
+---
 
 ### Always
 
+---
+
 ### Mixins
+
+---
 
 ## Initializing Turbine
 
@@ -502,7 +589,7 @@ Your `report` function would be passed whatever is defined in the workflow. You 
 ### Queries
 
 #### Responses
-
+Responses can be set two ways: via query functions in `initObj.queries`, or via the `setResponse()` method.
 * yes
 * no
 * *values*
