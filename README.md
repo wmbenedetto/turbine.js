@@ -75,8 +75,7 @@ var initObj = {
     publish     : function(){}, 
     listen      : function(){}, 
     remove      : function(){}, 
-    report      : function(){}, 
-    compare     : function(){}  
+    report      : function(){} 
 };
 
 // Instantiate new Turbine instance using initObj
@@ -305,15 +304,70 @@ Like `publish`, you may need to wrap your own event listener method in a custom 
 
 ### remove 
 
+*[FUNCTION] Function to use when removing event listeners*
+
+By default, Turbine will use `jQuery.off()` to remove listeners. If you would rather use some other event library, such as `Backbone.Events.off()`, you can define that method here.
+
+Turbine will pass your `remove` method one argument: 
+
+* `message` *[String] Event for which listeners should be removed*
+
+Like `publish` and `listen`, you may need to wrap your own method in a custom function to translate these arguments into something your listener understands.
+
 ---
 
 ### report
 
+*[FUNCTION] Function to use when reporting errors or events*
+
+By default, Turbine will report any internal errors to the browser console via `console.error()`. 
+
+If you'd rather have issues reported through some event logging or analytics system, you can define your own custom `report` function here.
+
+Turbine will pass your `report` method one argument: 
+
+* `obj` *[Object] Data object*
+
+If an internal Turbine issue is being reported, this object will contain two properties:
+
+* `handle` Short string identifying the issue (WORKFLOW_ISSUE_REPORTED is the default)
+* `description` Human-readable description of the issue
+
+The `report` function isn't just for errors though -- it can be used in the workflow to report any arbitrary event or activity. In this case, the data object passed to `report` is entirely defined in your workflow.
+
+For example, say you have a `isUserBanned` query in your workflow. When a banned user tries to access your app, you want to report that activity to a security monitor. You might have this in your workflow:
+
+```javascript
+
+var workflow = {
+    
+    queries : {
+        
+        isUserBanned : {
+            
+            yes : {
+                report : {
+                    errorType : 'FATAL'
+                    handle : 'BANNED_USER_LOGIN',
+                    description : 'A banned user tried to log into the site',
+                    username : app.getUserName()
+                    timestamp : new Date().getTime()
+                },
+                then : 'stop.'
+            },
+            
+            no : {
+                then : 'isUserLoggedIn'
+            }
+        }
+    }
+};
+```
+
+Your `report` function would be passed whatever is defined in the workflow. You can then use that data to report the issue however your system requires.
+
 --- 
 
-### compare
-
----
 
 ## Building a workflow
 
