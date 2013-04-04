@@ -29,19 +29,134 @@ In the meantime, see /examples (particularly /examples/js/init.js) for working e
 
 ## Key concepts
 
-### Overview
+In order to use Turbine, it's important to first define some key concepts. Once we have a common vocabulary established, we can then begin talking about how Turbine works and how you can use it to power your app.
 
-### Queries
+### Workflow
 
-### Responses
+The workflow is the jet fuel that powers Turbine. It's an expressive, declarative syntax for defining the control flow of your application. It allows you to define all the logical branching of your app in a single document, in a format that is both human- and machine-readable. 
+
+A workflow is essentially a series of questions (queries) and answers (reponses). It's almost like a conversation between your app and Turbine.
+
+>**Turbine:** Is the user signed up?
+>
+>**Your app:** Nope.
+>
+>**Turbine:** Okay. Ask him to sign up. I'll wait.
+>
+>*Your app displays a signup form. The user fills it in and clicks Submit.*
+>
+>**Your app:** Alrighty, he signed up.
+>
+>**Turbine:** Great. Is he over 18?
+>
+>**Your app:** No, he's only 13.
+>
+>**Turbine:** Damn. Ask him for his parent's email, then let me know.
+>
+>*Your app asks for the parent's email. The user submits it.*
+>
+>**Your app:** I got the parent's email.
+>
+>**Turbine:** Is is valid?
+>
+>**Your app:** Yep, looks good.
+>
+>**Turbine:** Great! Let him in. We're done!
+
+Now let's look at the same "conversation" expressed as a workflow.
+
+```javascript
+var workflow = {
+    
+    queries : {
+        
+        // Turbine: Is the user signed up?
+        isUserSignedUp : {
+            
+            // Your app: Nope.
+            no : {
+                
+                // Turbine: Okay. Ask him to sign up. I'll wait.
+                publish : {
+                    message : 'Signup.stepOne.show'
+                },
+                waitFor : 'Signup.stepOne.submitted',
+                
+                // Your app displays a signup form. The user fills it in and clicks Submit.
+                // This publishes a Signup.stepOne.submitted event. Which is equivalent to:
+                //
+                // Your app: Alrighty, he signed up.
+                // 
+                // Turbine moves to its next "question"
+                then : 'isOver18'
+            },
+            
+            yes : {
+                then : 'stop.'
+            },
+        },
+        
+        // Turbine: Great. Is he over 18?
+        isOver18 : {
+            
+            // Your app: No, he's only 13.
+            no : {
+                
+                // Turbine: Damn. Ask him for his parent's email, then let me know.
+                publish : {
+                    message : 'Signup.parentEmail.show'
+                },
+                waitFor : 'Signup.parentEmail.submitted',
+                
+                // Your app asks for the parent's email. The user submits it.
+                // This publishes a Signup.parentEmail.submitted event. Which is equivalent to:
+                //
+                // Your app: I got the parent's email.
+                // 
+                // Turbine moves to its next "question"
+                then : 'isParentEmailValid'
+            },
+            
+            yes : {
+                then : 'stop.'
+            }
+        },
+        
+        // Turbine: Is is valid?
+        isParentEmailValid : {
+            
+            // Your app: Yep, looks good.
+            yes : {
+                
+                // Turbine: Great! Let him in. We're done!
+                publish : {
+                    message : 'Signup.form.complete'
+                },
+                then : 'stop.'
+            }, 
+            
+            no : {
+                publish : {
+                    message : 'Signup.error.show.INVALID_EMAIL_ADDRESS'
+                },
+                then : 'isOver18'
+            }
+        }
+    }    
+};
+```
+
+#### Queries
+
+
+
+#### Responses
 
 Responses can be set two ways: via query functions in `initObj.queries`, or via the `setResponse()` method.
 
 ### Resets
 
-### Events
-
-### Workflow
+### Events/Messages
 
 ### Shortcuts
 
