@@ -29,7 +29,7 @@ In the meantime, see /examples (particularly /examples/js/init.js) for working e
 
 ## Key concepts
 
-In order to use Turbine, it's important to first define some key concepts. Once we have a common vocabulary established, we can then begin talking about how Turbine works and how you can use it to power your app.
+In order to use Turbine, it's important to first define some key concepts. Once we have a common vocabulary and general conceptual understanding established, we can then begin talking about how you can use Turbine to power your app.
 
 ### Workflow
 
@@ -107,7 +107,7 @@ var workflow = {
                 
                 // Your app is listening for a Signup.parentEmail.show message. It knows to handle
                 // that by displaying a form that asks the user for his parent's email address.
-                // The user enters the email and clicks Submit. This publishes a Signup.stepOne.submitted message. 
+                // The user enters the email and clicks Submit. This publishes a Signup.parentEmail.submitted message. 
                 // Which is equivalent to:
                 //
                 // Your app: I got the parent's email.
@@ -153,6 +153,18 @@ Queries are the questions that Turbine asks your app. Therefore, a query is a st
 * canOpenGoldDoor
 * whichErrorCode
 * howManyStars
+
+#### Query phrasing
+
+Generally, queries should be phrased so that the affirmative answer (if there is one) is the answer you want/expect. 
+
+For example, say you want to confirm that a plugin is the latest version. There are two ways you could write the same query: `isPluginOutdated` or `isPluginUpToDate`. 
+
+Since you want and expect the plugin to be up-to-date, the preferred phrasing would be `isPluginUpToDate`. 
+
+Phrasing your queries this way means that the "happy path" through your app is a series of yesses. Is the plugin up to date? Yes! Is the game loaded? Yes! Is the user logged in? Yes! And so on.
+
+#### Query functions
 
 When you instantiate an instance of Turbine, you can (but don't have to) define functions from your app that Turbine can use to execute the query.
 
@@ -210,7 +222,7 @@ if (user.email.indexOf('@') < 0){
     turbine.setResponse('whichErrorCode','INVALID_EMAIL');
 }
 ```
-When Turbine reaches the `whichErrorCode` query, it will first check if a query function has been defined. It hasn't been, so Turbine then checks to see which response was set: `INVALID EMAIL`.
+When Turbine reaches the `whichErrorCode` query, it will first check if a query function has been defined. It hasn't been, so Turbine then checks to see which response was set via `setResponse()`.
 
 #### Via initialization object
 
@@ -219,7 +231,7 @@ When Turbine is instantiated, you can define default responses in the init objec
 ```javascript
 var initObj = {
     responses : {
-        canOpenGoldDoor : true,
+        isLoggedIn : true,
         howManyStars : 3
     }  
 };
@@ -230,6 +242,78 @@ When Turbine executes a query and 1.) no query function has been defined, and 2.
 ---
 
 ### Resets
+
+Workflows don't always move inexorably forward in a straight line. Sometimes they need to backtrack, repeat, start over, etc. When this happens, you may need to reset some of the responses you previously set.
+
+For example, consider a login form that limits a user to 3 login attempts before locking the login form. By default, the user can attempt to login, so the default response for `canAttemptLogin` is true.
+
+```javascript
+var initObj = {
+    responses : {
+        canAttemptLogin : true
+    },
+    resets : {
+        canAttemptLogin : user.hasLoginAttemptsRemaining.bind(user)
+    }
+};
+```
+
+The login workflow is very simple. We check if the user can attempt a login. If he can, we publish a message telling the app to show the form, and we wait until the form is submitted. Then we check if the login is valid.
+
+If the login is not valid, then we publish a message telling the app there has been an error, then we wait for a message telling us the user wants to retry. When we get that message, we **rewind** the workflow and replay the `canAttemptLogin` query.
+
+Here's that workflow:
+
+```javascript
+var workflow = {
+    
+    queries : {
+        
+        canAttemptLogin : {
+            yes : {
+                publish : {
+                    message : 'LoginForm.show'
+                },
+                waitFor : 'LoginForm.submit',
+                then : 'isLoginValid'
+            },
+            no : {
+                // publish message to disable login form
+            }
+        },
+        
+        isLoginValid : {
+            yes : {
+                // publish message to let user into site
+            },
+            no : {
+                publish : {
+                    message : 'LoginForm.error'
+                },
+                waitFor : 'LoginForm.retry',
+                then : 'canAttemptLogin'
+            }
+        }
+    }
+}
+```
+
+The key here is the rewind: whenever we go backwards in the workflow, Turbine checks to see if a reset has been defined for each query we have already passed. In this example, we defined a reset function for `canAttemptLogin` in our init object:
+
+```javascript
+var initObj = {
+    responses : {
+        canAttemptLogin : true
+    },
+    resets : {
+        canAttemptLogin : user.hasLoginAttemptsRemaining.bind(user)
+    }
+};
+```
+
+Therefore, each time we rewind from `isLoginValid` back to `canAttemptLogin`, Turbine calls the `user.hasLoginAttemptsRemaining()` function. The first time through, this will return true. Second time, true. Third time, true. 
+
+But when we rewind the fourth time, it will return *false.* So when the `canAttemptLogin` query is executed for the fourth time, it will follow the "no" response instead, locking the form against further attempts.
 
 ---
 
