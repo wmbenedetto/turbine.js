@@ -35,7 +35,7 @@ In order to use Turbine, it's important to first define some key concepts. Once 
 
 The workflow is the jet fuel that powers Turbine. It's an expressive, declarative syntax for defining the control flow of your application. It allows you to define all the logical branching of your app in a single document, in a format that is both human- and machine-readable. 
 
-A workflow is essentially a series of questions (queries) and answers (reponses). It's almost like a conversation between Turbine and your app.
+A workflow is essentially a series of questions (queries) and answers (responses). It's almost like a conversation between Turbine and your app.
 
 >**Turbine:** Is the user signed up?
 >
