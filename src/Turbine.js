@@ -65,14 +65,33 @@ if (typeof MINIFIED === 'undefined'){
     /**
      * Initializes Turbine via initObj object.
      *
-     * This initObj must define the workflow config, queries, and mixins.
+     * var initObj = {
      *
-     * The initObj can also optionally define functions for publish(),
+     *     // REQUIRED
+     *     workflow    : {},
+     *
+     *     // OPTIONAL
+     *     name        : '',
+     *     logLevel    : '',
+     *     queries     : {},
+     *     responses   : {},
+     *     resets      : {},
+     *     init        : function(){},
+     *     log         : function(){},
+     *     publish     : function(){},
+     *     listen      : function(){},
+     *     remove      : function(){},
+     *     report      : function(){}
+     * };
+     *
+     * The initObj must define the workflow.
+     *
+     * It can also optionally define functions for publish(),
      * listen(), and remove(). If these aren't defined, jQuery's
      * trigger/bind/unbind will be used by default.
      *
      * The initObj can also define query and reset functions; default responses;
-     * function definitions for log(), compare(), and report(); the name of this
+     * function definitions for init(), log(), and report(); the name of this
      * Turbine instance (used for logging); and the logLevel.
      *
      * @param initObj Initialization object
@@ -123,13 +142,14 @@ if (typeof MINIFIED === 'undefined'){
             global                              : null
         };
 
-        if (typeof initObj.init === 'function'){
-            initObj.init();
-        }
-
+        this.initPubSub();
         this.importFunctions(initObj);
         this.importObjects(initObj);
         this.importWorkflow(initObj);
+
+        if (typeof initObj.init === 'function'){
+            initObj.init(this);
+        }
     };
 
     /**
@@ -154,6 +174,35 @@ if (typeof MINIFIED === 'undefined'){
         waitingFor                              : null,
         workflow                                : null,
         logLevels                               : null,
+        pubsub                                  : null,
+
+        /**
+         * Initializes default publish/listen/remove functions.
+         * These can be overridden by functions defined the initObj
+         * passed to the Turbine constructor
+         */
+        initPubSub : function(){
+
+            var self                            = this;
+
+            this.pubsub = {
+
+                publish : function(message,payload){
+                    $(self).trigger(message,payload);
+                },
+
+                listen : function(message,handler){
+                    $(self).on(message,function(e) {
+                        console.log(e);
+                        handler(e.type, e.data);
+                    });
+                },
+
+                remove : function(message){
+                    $(self).unbind(message);
+                }
+            }
+        },
 
         /**
          * Imports valid functions specified in initObj to Turbine
@@ -174,8 +223,7 @@ if (typeof MINIFIED === 'undefined'){
                 'publish',
                 'listen',
                 'remove',
-                'report',
-                'compare'
+                'report'
             ];
 
             for (var i=0;i<validFunctions.length;i++) {
@@ -528,7 +576,7 @@ if (typeof MINIFIED === 'undefined'){
             }
 
             for (var i=0;i<message.length;i++) {
-                $(this).trigger(message[i],payload);
+                this.pubsub.publish(message[i],payload);
             }
 
             if (typeof callback === 'function') {
@@ -557,10 +605,7 @@ if (typeof MINIFIED === 'undefined'){
             }
 
             for (var i=0;i<message.length;i++) {
-
-                $(this).on(message[i],function(e) {
-                    handler(e.type, e.data);
-                });
+                this.pubsub.listen(message[i],handler);
             }
         },
 
@@ -584,23 +629,8 @@ if (typeof MINIFIED === 'undefined'){
             }
 
             for (var i=0;i<message.length;i++) {
-                 $(this).unbind(message[i]);
+                 this.pubsub.remove(message[i]);
             }
-        },
-
-        /**
-         * Default implementation of compare() method. Used to compare two messages to each
-         * other, to determine if they match.
-         *
-         * This can be overridden by defining a compare() method in the initObj passed to
-         * the constructor.
-         *
-         * @param msg1 The first message to compare
-         * @param msg2 The second message to compare
-         * @return {Boolean}
-         */
-        compare : function(msg1,msg2) {
-            return msg1 === msg2;
         },
 
         /**
@@ -1445,10 +1475,6 @@ if (typeof MINIFIED === 'undefined'){
         /**
          * Gets the next query to execute based on the message being handled.
          *
-         * When a message is handled, we need to determine whether it was handled
-         * as a global listener message or a query waitFor message, and then
-         * return the next step accordingly.
-         *
          * @param message The message being handled
          */
         getNextQuery : function(message) {
@@ -1457,7 +1483,7 @@ if (typeof MINIFIED === 'undefined'){
 
             for (var msg in this.nextQueryObj) {
 
-                if (this.nextQueryObj.hasOwnProperty(msg) && this.compare(message,msg)) {
+                if (this.nextQueryObj.hasOwnProperty(msg) && message === msg) {
                     next                        = this.nextQueryObj[msg];
                     break;
                 }
