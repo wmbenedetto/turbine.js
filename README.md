@@ -696,20 +696,98 @@ Your `report` function would be passed whatever is defined in the workflow. You 
 
 ## Building a workflow
 
-### Config
+A workflow is an object literal defined in the init object passed to the Turbine constructor. It is the only mandatory property of the init object.
 
-#### Shortcuts
+The workflow has three main properties: `config`, `mixins`, and `queries`. 
 
-#### Variables
+```javascript
+var initObj = {
+    
+    workflow : {
+        
+        config  : {},
+        mixins  : {},
+        queries : {}
+    }
+};
+```
 
-#### Always
+Each of these properties is also an object. The `config` and `mixins` are optional; `queries` are required.
+
+Let's look at each one in detail.
+
+---
+
+### config
+
+The `config` property is an optional object literal that defines values to be used elsewhere in the workflow: `shortcuts`, `variables`, and `always`.
+
+```javascript
+config : {
+    
+    shortcuts : {},
+    variables : {},
+    always    : {}
+}
+```
+
+##### shortcuts
+
+Shortcuts are a way for you to reference a query by an alias instead of using it directly. This creates greater flexibility in your workflow by decoupling intention from expression. The shortcut name can be an arbitrary string, and you can define as many shortcuts as you want.
+
+For example, say you sometimes want your workflow to go back to the beginning based on some query response. You can define a `start` shortcut like this:
+
+```javascript
+shortcuts : {
+    start : 'isCheckoutStarted'
+}
+```
+
+To use the shortcut in your workflow, you would reference it with an @ symbol, like `@start`:
+
+```javascript
+queries : {
+    
+    isCheckoutStarted : {
+        yes : {
+            then : 'isCheckoutCancelled'
+        },
+        no : {
+            // do stuff
+        }
+    },
+    
+    isCheckoutCancelled : {
+        yes : {
+            then : '@start'
+        },
+        no : {
+            // do stuff
+        }
+    }
+}
+```
+
+By using the shortcut, your workflow doesn't need to know which query is the starting query -- it just needs to know to go back to the start of the workflow. 
+
+If, in the future, you add additional queries to the beginning of the workflow (therefore changing which query is the starting query), you only need to change the definition of the `start` shortcut in the config.
+
+##### variables
+
+##### always
 
 * timeout
 * waitFor
 
-### Mixins
+---
 
-### Queries
+### mixins
+
+---
+
+### queries
+
+---
 
 #### Responses
 Responses can be set two ways: via query functions in `initObj.queries`, or via the `setResponse()` method.
