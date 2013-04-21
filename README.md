@@ -33,7 +33,7 @@ In order to use Turbine, it's important to first define some key concepts. Once 
 
 ### Workflow
 
-The workflow is the jet fuel that powers Turbine. It's an expressive, declarative syntax for defining the control flow of your application. It allows you to define all the logical branching of your app in a single document, in a format that is both human- and machine-readable. 
+The workflow is the jet fuel that powers Turbine. It's an expressive, declarative syntax for defining the program flow of your application. It allows you to define all the logical branching of your app in a single document, in a format that is both human- and machine-readable. 
 
 A workflow is essentially a series of questions (queries) and answers (responses). It's almost like a conversation between Turbine and your app.
 
@@ -727,11 +727,13 @@ config : {
     
     shortcuts : {},
     variables : {},
-    always    : {}
+    always    : {
+        timeout : {},
+        waitFor : []
+    }
 }
 ```
-
-##### shortcuts
+#### shortcuts
 
 Shortcuts are a way for you to reference a query by an alias instead of using it directly. This creates greater flexibility in your workflow by decoupling intention from expression. The shortcut name can be an arbitrary string, and you can define as many shortcuts as you want.
 
@@ -743,7 +745,7 @@ shortcuts : {
 }
 ```
 
-To use the shortcut in your workflow, you would reference it with an @ symbol, like `@start`:
+To use the shortcut in your workflow, you would **reference it with an @ symbol**, like `@start`:
 
 ```javascript
 queries : {
@@ -772,12 +774,84 @@ By using the shortcut, your workflow doesn't need to know which query is the sta
 
 If, in the future, you add additional queries to the beginning of the workflow (therefore changing which query is the starting query), you only need to change the definition of the `start` shortcut in the config.
 
-##### variables
+#### variables
 
-##### always
+As you might expect, variables in Turbine work just like those in any programming language: the variable is replaced with the value defined in the config. 
 
-* timeout
-* waitFor
+```javascript
+variables : {
+    cartTimeout : 36000
+}
+```
+
+To use the variable in your workflow, you would **reference it with an $ symbol**, like `$cartTimeout`:
+
+```javascript
+queries : {
+    
+    isCheckoutStarted : {
+        yes : {
+            timeout : {
+                after : '$cartTimeout',
+                publish : 'Cart.timeout.expired',
+                then : 'stop.'
+            }
+        },
+        no : {
+            // do stuff
+        }
+    }
+}
+```
+
+The one caveat is that variables can only be used for string, boolean, numeric, or null values. If you want a variable-like way to represent objects, use a mixin instead.
+
+#### always
+
+The `always` object is a way to define things that should be done for every query that is executed. This saves you from needing to duplicate the same code over and over. 
+
+```javascript
+always : {
+    timeout : {},
+    waitFor : []
+}
+```
+
+##### timeout  
+The `timeout` property allows you to define a global timeout for the entire workflow. 
+
+For example, you may want to ask the user if they're still there when there has been no activity for a few minutes. Or you may want to raise an error if you app has become unresponsive for some reason. The format of the `timeout` property is the same as when  `timeout` is defined in a response (see docs below).
+
+```javascript
+timeout : {
+    after : 300000,
+    publish : {
+        message : "Cart.issue.detected.GLOBAL_TIMEOUT"
+    },
+    then : "stop."
+},
+```
+
+##### waitFor
+The `waitFor` property is an array of objects defining messages for which to listen, as well as an optional `then` that tells the workflow where to go when the message is received. Whenever your app is waiting for messages, these global `waitFor` messages will be listened for as well.
+
+```javascript
+waitFor : [
+    {
+        waitFor : 'Cart.issue.detected.FATAL_ERROR',
+        then    : 'whichFatalError'
+    },
+    {
+        waitFor : [
+            'Cart.issue.detected.MINOR_WARNING',
+            'Cart.issue.detected.SEVERE_WARNING'
+        ],
+        then      : 'whichWarning'
+    }
+]
+```
+
+If one of the global `waitFor` messages is received, its `then` value is processed in lieu of the `then` defined in the workflow. In other words, the global waitFor's `then` overrides the query response's `then`. This allows you to re-route your workflow whenever certain critical messages are received.
 
 ---
 
