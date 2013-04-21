@@ -15,7 +15,7 @@ var app = {
 
             /* Load workflow queries based on option selected in page */
             var querySet                        = $('input[name=loginBefore]:checked').val();
-            cartInit.workflow.queries           = queries[querySet];
+            cartInit.workflow                   = queries[querySet];
 
             window.cartTurbine                  = new Turbine(cartInit);
 
@@ -245,7 +245,7 @@ var app = {
         if (showThanks){
             alert('Thanks for signing up!');
         } else {
-            alert('Congrats! You get '+cartTurbine.getConfigVar('signupOfferPoints')+' SuperShopper points!');
+            alert('Congrats! You get '+cartTurbine.getVar('signupOfferPoints')+' SuperShopper points!');
         }
 
         app.logIn();
