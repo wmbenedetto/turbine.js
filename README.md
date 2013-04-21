@@ -68,78 +68,76 @@ Now let's look at the same "conversation" expressed as a workflow:
 ```javascript
 var workflow = {
     
-    queries : {
-        
-        // Turbine: Is the user signed up?
-        isUserSignedUp : {
-            // Your app: Nope.
-            no : {
-                // Turbine: Okay. Ask him to sign up. I'll wait.
-                publish : {
-                    message : 'Signup.stepOne.show'
-                },
-                waitFor : 'Signup.stepOne.submitted',
-                
-                // Your app is listening for a Signup.stepOne.show message. It knows to handle
-                // that by displaying a signup form. The user fills it in and clicks Submit.
-                // This publishes a Signup.stepOne.submitted message. Which is equivalent to:
-                //
-                // Your app: Alrighty, he signed up.
-                // 
-                // Turbine moves to its next "question"
-                then : 'isOver18'
+    // Turbine: Is the user signed up?
+    isUserSignedUp : {
+        // Your app: Nope.
+        no : {
+            // Turbine: Okay. Ask him to sign up. I'll wait.
+            publish : {
+                message : 'Signup.stepOne.show'
             },
+            waitFor : 'Signup.stepOne.submitted',
             
-            yes : {
-                then : 'stop.'
-            },
+            // Your app is listening for a Signup.stepOne.show message. It knows to handle
+            // that by displaying a signup form. The user fills it in and clicks Submit.
+            // This publishes a Signup.stepOne.submitted message. Which is equivalent to:
+            //
+            // Your app: Alrighty, he signed up.
+            // 
+            // Turbine moves to its next "question"
+            then : 'isOver18'
         },
         
-        // Turbine: Great. Is he over 18?
-        isOver18 : {
-            // Your app: No, he's only 13.
-            no : {
-                // Turbine: Damn. Ask him for his parent's email, then let me know.
-                publish : {
-                    message : 'Signup.parentEmail.show'
-                },
-                waitFor : 'Signup.parentEmail.submitted',
-                
-                // Your app is listening for a Signup.parentEmail.show message. It knows to handle
-                // that by displaying a form that asks the user for his parent's email address.
-                // The user enters the email and clicks Submit. This publishes a Signup.parentEmail.submitted message. 
-                // Which is equivalent to:
-                //
-                // Your app: I got the parent's email.
-                // 
-                // Turbine moves to its next "question"
-                then : 'isParentEmailValid'
+        yes : {
+            then : 'stop.'
+        },
+    },
+    
+    // Turbine: Great. Is he over 18?
+    isOver18 : {
+        // Your app: No, he's only 13.
+        no : {
+            // Turbine: Damn. Ask him for his parent's email, then let me know.
+            publish : {
+                message : 'Signup.parentEmail.show'
             },
+            waitFor : 'Signup.parentEmail.submitted',
             
-            yes : {
-                then : 'stop.'
-            }
+            // Your app is listening for a Signup.parentEmail.show message. It knows to handle
+            // that by displaying a form that asks the user for his parent's email address.
+            // The user enters the email and clicks Submit. This publishes a Signup.parentEmail.submitted message. 
+            // Which is equivalent to:
+            //
+            // Your app: I got the parent's email.
+            // 
+            // Turbine moves to its next "question"
+            then : 'isParentEmailValid'
         },
         
-        // Turbine: Is is valid?
-        isParentEmailValid : {
-            // Your app: Yep, looks good.
-            yes : {
-                // Turbine: Great! Let him in. We're done!
-                publish : {
-                    message : 'Signup.form.complete'
-                },
-                then : 'stop.'
-            }, 
-            
-            no : {
-                publish : {
-                    message : 'Signup.error.show.INVALID_EMAIL_ADDRESS'
-                },
-                then : 'isOver18'
-            }
+        yes : {
+            then : 'stop.'
         }
-    }    
+    },
+    
+    // Turbine: Is is valid?
+    isParentEmailValid : {
+        // Your app: Yep, looks good.
+        yes : {
+            // Turbine: Great! Let him in. We're done!
+            publish : {
+                message : 'Signup.form.complete'
+            },
+            then : 'stop.'
+        }, 
+        
+        no : {
+            publish : {
+                message : 'Signup.error.show.INVALID_EMAIL_ADDRESS'
+            },
+            then : 'isOver18'
+        }
+    }
+ 
 };
 ```
 
@@ -270,33 +268,30 @@ Here's that workflow:
 
 ```javascript
 var workflow = {
-    
-    queries : {
-        
-        canAttemptLogin : {
-            yes : {
-                publish : {
-                    message : 'LoginForm.show'
-                },
-                waitFor : 'LoginForm.submit',
-                then : 'isLoginValid'
+            
+    canAttemptLogin : {
+        yes : {
+            publish : {
+                message : 'LoginForm.show'
             },
-            no : {
-                // publish message to disable login form
-            }
+            waitFor : 'LoginForm.submit',
+            then : 'isLoginValid'
         },
-        
-        isLoginValid : {
-            yes : {
-                // publish message to let user into site
+        no : {
+            // publish message to disable login form
+        }
+    },
+    
+    isLoginValid : {
+        yes : {
+            // publish message to let user into site
+        },
+        no : {
+            publish : {
+                message : 'LoginForm.error'
             },
-            no : {
-                publish : {
-                    message : 'LoginForm.error'
-                },
-                waitFor : 'LoginForm.retry',
-                then : 'canAttemptLogin'
-            }
+            waitFor : 'LoginForm.retry',
+            then : 'canAttemptLogin'
         }
     }
 }
@@ -328,49 +323,46 @@ Of course, there's no requirement that you wait for a return message after you p
 
 ```javascript
 var workflow = {
-    
-    queries : {
         
-        isAppStarted : {
-            
-            // You can wait for a message without having published one previously
-            yes : {
-                waitFor : 'App.stepOne.complete',
-                then : 'isAfterMidnight'
-            },
-            no : {
-                // do stuff
-            }
+    isAppStarted : {
+        
+        // You can wait for a message without having published one previously
+        yes : {
+            waitFor : 'App.stepOne.complete',
+            then : 'isAfterMidnight'
         },
+        no : {
+            // do stuff
+        }
+    },
 
-        isAfterMidnight : {
-            
-            // You can publish a message without waiting for a return message
-            yes : {
-                publish : {
-                    message : 'App.theme.update.DARK_BACKGROUND'
-                },
-                then : 'isStepOneComplete'
-            },
-            no : {
-                // do stuff
-            }
-        },
+    isAfterMidnight : {
         
-        isStepOneComplete : {
-            
-            // You can publish a message then wait for a return message
-            yes : {
-                publish : {
-                    message : 'App.stepTwo.show'
-                },
-                waitFor : 'App.stepTwo.complete'
-                then : 'stop.'
+        // You can publish a message without waiting for a return message
+        yes : {
+            publish : {
+                message : 'App.theme.update.DARK_BACKGROUND'
             },
-            no : {
-                // do stuff
-            }
+            then : 'isStepOneComplete'
         },
+        no : {
+            // do stuff
+        }
+    },
+    
+    isStepOneComplete : {
+        
+        // You can publish a message then wait for a return message
+        yes : {
+            publish : {
+                message : 'App.stepTwo.show'
+            },
+            waitFor : 'App.stepTwo.complete'
+            then : 'stop.'
+        },
+        no : {
+            // do stuff
+        }
     }
 };
 ```
@@ -395,7 +387,11 @@ var initObj = {
     logLevel    : '',           
     queries     : {},          
     responses   : {},           
-    resets      : {},           
+    resets      : {},
+    shortcuts   : {},
+    variables   : {},
+    mixins      : {},
+    always      : {},
     init        : function(){}, 
     log         : function(){}, 
     publish     : function(){}, 
@@ -469,7 +465,7 @@ The default value is `ERROR`.
 
 ### queries
 
-*[OBJECT] Contains functions used to resolve queries and return responses.*
+*[OBJECT] Functions used to resolve queries and return responses.*
 
 The `initObj.queries` object is a collection of key:value pairs. Each key is the name of a query that appears in your workflow; each corresponding value is a reference to a function that will return the result of the query (a.k.a. the response).
 
@@ -510,7 +506,7 @@ Never fear though ... Turbine includes an implementation of `bind`, so you can u
 
 ### responses
 
-*[OBJECT] Contains default responses to workflow queries.*
+*[OBJECT] Default responses to workflow queries.*
 
 The `responses` object is a collection of key:value pairs. Each key is the name of a query that appears in your workflow; each corresponding value is the default response for that query.
 
@@ -534,7 +530,7 @@ When Turbine is instantiated, it imports these default responses. If no query fu
 
 ### resets
 
-*[OBJECT] Contains functions or values used to reset query responses when rewinding a workflow*
+*[OBJECT] Functions or values used to reset query responses when rewinding a workflow*
 
 The `resets` object is a collection of key:value pairs. Each key is the name of a query that appears in your workflow; each corresponding value is either a function or a value to use when rewinding the workflow.
 
@@ -557,6 +553,239 @@ When this happens, it may be necessary to reset some of the responses that are b
 To do this you could either set `initObj.resets.isStepThreeComplete = false`, or your could set it to a function to be  called to determine the reset value, i.e. `initObj.resets.isStepThreeComplete = app.isStepThreeComplete.bind(app)`.
 
 If no reset for a query is defined in `initObj.resets`, then the response is not reset during a rewind.
+
+---
+
+### shortcuts
+
+*[OBJECT] Aliases for workflow queries*
+
+Shortcuts are a way for you to reference a query by an alias instead of using it directly. This creates greater flexibility in your workflow by decoupling intention from expression. The shortcut name can be an arbitrary string, and you can define as many shortcuts as you want.
+
+For example, say you sometimes want your workflow to go back to the beginning based on some query response. You can define a `start` shortcut like this:
+
+```javascript
+var initObj = {
+    
+    shortcuts : {
+        start : 'isCheckoutStarted'
+    }
+}
+```
+
+To use the shortcut in your workflow, you would **reference it with an @ symbol**, like `@start`:
+
+```javascript
+workflow : {
+    
+    isCheckoutStarted : {
+        yes : {
+            then : 'isCheckoutCancelled'
+        },
+        no : {
+            // do stuff
+        }
+    },
+    
+    isCheckoutCancelled : {
+        yes : {
+            then : '@start'
+        },
+        no : {
+            // do stuff
+        }
+    }
+}
+```
+
+By using the shortcut, your workflow doesn't need to know which query is the starting query -- it just needs to know to go back to the start of the workflow. 
+
+If, in the future, you add additional queries to the beginning of the workflow (therefore changing which query is the starting query), you only need to change the definition of the `start` shortcut in the config.
+
+---
+
+### variables
+
+*[OBJECT] Keys representing scalar values (string, boolean, numeric, null)*
+
+As you might expect, variables in Turbine work just like those in any programming language: the variable is replaced with the value defined in the config. 
+
+```javascript
+var initObj = {
+    
+    variables : {
+        cartTimeout : 36000
+    }
+}
+```
+
+To use the variable in your workflow, you would **reference it with an $ symbol**, like `$cartTimeout`:
+
+```javascript
+workflow : {
+    
+    isCheckoutStarted : {
+        yes : {
+            timeout : {
+                after : '$cartTimeout',
+                publish : 'Cart.timeout.expired',
+                then : 'stop.'
+            }
+        },
+        no : {
+            // do stuff
+        }
+    }
+}
+```
+
+The one caveat is that variables can only be used for string, boolean, numeric, or null values. If you want a variable-like way to represent object literals, use a mixin instead.
+
+---
+
+### mixins
+
+*[OBJECT] Keys representing object literals*
+
+A mixin is basically a variable representing an object literal. Mixins are replaced recursively, so you can use mixins within mixins. You can also use variables and shortcuts within mixins.
+
+```javascript
+var initObj = {
+    
+    mixins : {
+        invalidLogin : {
+            publish : {
+                message : 'Cart.login.failed'
+            }
+        }
+    }
+}
+```
+
+To use the mixin in your workflow, you would **reference it with a + symbol**, like `+invalidLogin`:
+
+```javascript
+workflow : {
+    
+    whichError : {
+        USERNAME_NOT_FOUND : '+invalidLogin',
+        PASSWORD_INCORRECT : '+invalidLogin',
+        CAPTCHA_INCORRECT  : '+invalidLogin'
+    }
+}
+```
+
+When Turbine imports your workflow, it replaces the mixins like this:
+
+```javascript
+workflow : {
+    
+    whichError : {
+        USERNAME_NOT_FOUND : {
+            publish : {
+                message : 'Cart.login.failed'
+            }
+        },
+        PASSWORD_INCORRECT : {
+            publish : {
+                message : 'Cart.login.failed'
+            }
+        },
+        CAPTCHA_INCORRECT  : {
+            publish : {
+                message : 'Cart.login.failed'
+            }
+        }
+    }
+}
+```
+
+For a more complex implementation of mixins, see the example app in the /examples directory.
+
+---
+
+### always
+
+*[OBJECT]*
+
+The `always` object is a way to define things that should be added to every query that is executed. This saves you from needing to duplicate the same code over and over. 
+
+```javascript
+var initObj = {
+    
+    always : {
+        timeout : {},
+        waitFor : [],
+        using   : {}
+    }
+}
+```
+
+#### timeout  
+The `timeout` property allows you to define a global timeout for the entire workflow. 
+
+For example, you may want to ask the user if they're still there when there has been no activity for a few minutes. Or you may want to raise an error if you app has become unresponsive for some reason. The format of the `timeout` property is the same as when  `timeout` is defined in a response (see docs below).
+
+```javascript
+timeout : {
+    after : 300000,
+    publish : {
+        message : "Cart.issue.detected.GLOBAL_TIMEOUT"
+    },
+    then : "stop."
+},
+```
+
+#### waitFor
+The `waitFor` property is an array of objects defining messages for which to listen, as well as an optional `then` that tells the workflow where to go when the message is received. Whenever your app is waiting for messages, these global `waitFor` messages will be listened for as well.
+
+```javascript
+waitFor : [
+    {
+        waitFor : 'Cart.issue.detected.FATAL_ERROR',
+        then    : 'whichFatalError'
+    },
+    {
+        waitFor : [
+            'Cart.issue.detected.MINOR_WARNING',
+            'Cart.issue.detected.SEVERE_WARNING'
+        ],
+        then      : 'whichWarning'
+    }
+]
+```
+
+If one of the global `waitFor` messages is received, its `then` value is processed in lieu of the `then` defined in the workflow. In other words, the global waitFor's `then` overrides the query response's `then`. This allows you to re-route your workflow whenever certain critical messages are received.
+
+#### using
+
+The `using` property is an object literal that will be merged with the `using` property whenever a message is published from Turbine.
+
+```javascript
+using : {
+    timestamp : new Date().getTime()
+}
+```
+
+```javascript
+workflow : {
+    isAppStarted : {
+        yes : {
+            publish : {
+                message : 'Cart.app.started',
+                using : {
+                    storeName : 'My Store'
+                }
+            }
+        },
+        no : {
+            // do stuff
+        }
+    }
+}
+```
+
+When this workflow runs and the `yes` response to `isAppStarted` is executed, Turbine will publish the `Cart.app.started` message. The message payload will be an object containing `storeName`, as well as `timestamp` from the global `using` object.
 
 ---
 
@@ -666,27 +895,24 @@ For example, say you have a `isUserBanned` query in your workflow. When a banned
 ```javascript
 
 var workflow = {
-    
-    queries : {
         
-        isUserBanned : {
-            
-            yes : {
-                report : {
-                    errorType : 'FATAL'
-                    handle : 'BANNED_USER_LOGIN',
-                    description : 'A banned user tried to log into the site',
-                    username : app.getUserName()
-                    timestamp : new Date().getTime()
-                },
-                then : 'stop.'
+    isUserBanned : {
+        
+        yes : {
+            report : {
+                errorType : 'FATAL'
+                handle : 'BANNED_USER_LOGIN',
+                description : 'A banned user tried to log into the site',
+                username : app.getUserName()
+                timestamp : new Date().getTime()
             },
-            
-            no : {
-                then : 'isUserLoggedIn'
-            }
+            then : 'stop.'
+        },
+        
+        no : {
+            then : 'isUserLoggedIn'
         }
-    }
+    } 
 };
 ```
 
@@ -697,23 +923,6 @@ Your `report` function would be passed whatever is defined in the workflow. You 
 ## Building a workflow
 
 A workflow is an object literal defined in the init object passed to the Turbine constructor. It is the only mandatory property of the init object.
-
-The workflow has two properties: `config` and `queries`. 
-
-```javascript
-var initObj = {
-    
-    workflow : {
-        
-        config  : {},
-        queries : {}
-    }
-};
-```
-
-Each of these properties is also an object. The `config` is optional; `queries` are required.
-
-Let's look at each one in detail.
 
 ---
 
@@ -733,179 +942,6 @@ config : {
     }
 }
 ```
-#### shortcuts
-
-Shortcuts are a way for you to reference a query by an alias instead of using it directly. This creates greater flexibility in your workflow by decoupling intention from expression. The shortcut name can be an arbitrary string, and you can define as many shortcuts as you want.
-
-For example, say you sometimes want your workflow to go back to the beginning based on some query response. You can define a `start` shortcut like this:
-
-```javascript
-shortcuts : {
-    start : 'isCheckoutStarted'
-}
-```
-
-To use the shortcut in your workflow, you would **reference it with an @ symbol**, like `@start`:
-
-```javascript
-queries : {
-    
-    isCheckoutStarted : {
-        yes : {
-            then : 'isCheckoutCancelled'
-        },
-        no : {
-            // do stuff
-        }
-    },
-    
-    isCheckoutCancelled : {
-        yes : {
-            then : '@start'
-        },
-        no : {
-            // do stuff
-        }
-    }
-}
-```
-
-By using the shortcut, your workflow doesn't need to know which query is the starting query -- it just needs to know to go back to the start of the workflow. 
-
-If, in the future, you add additional queries to the beginning of the workflow (therefore changing which query is the starting query), you only need to change the definition of the `start` shortcut in the config.
-
-#### variables
-
-As you might expect, variables in Turbine work just like those in any programming language: the variable is replaced with the value defined in the config. 
-
-```javascript
-variables : {
-    cartTimeout : 36000
-}
-```
-
-To use the variable in your workflow, you would **reference it with an $ symbol**, like `$cartTimeout`:
-
-```javascript
-queries : {
-    
-    isCheckoutStarted : {
-        yes : {
-            timeout : {
-                after : '$cartTimeout',
-                publish : 'Cart.timeout.expired',
-                then : 'stop.'
-            }
-        },
-        no : {
-            // do stuff
-        }
-    }
-}
-```
-
-The one caveat is that variables can only be used for string, boolean, numeric, or null values. If you want a variable-like way to represent object literals, use a mixin instead.
-
-#### mixins
-
-A mixin is basically a variable representing an object literal. Mixins are replaced recursively, so you can use mixins within mixins. You can also use variables and shortcuts within mixins.
-
-```javascript
-mixins : {
-    invalidLogin : {
-        publish : {
-            message : 'Cart.login.failed'
-        }
-    }
-}
-```
-
-To use the mixin in your workflow, you would **reference it with a + symbol**, like `+invalidLogin`:
-
-```javascript
-queries : {
-    
-    whichError : {
-        USERNAME_NOT_FOUND : '+invalidLogin',
-        PASSWORD_INCORRECT : '+invalidLogin',
-        CAPTCHA_INCORRECT  : '+invalidLogin'
-    }
-}
-```
-
-When Turbine imports your workflow, it replaces the mixins like this:
-
-```javascript
-queries : {
-    
-    whichError : {
-        USERNAME_NOT_FOUND : {
-            publish : {
-                message : 'Cart.login.failed'
-            }
-        },
-        PASSWORD_INCORRECT : {
-            publish : {
-                message : 'Cart.login.failed'
-            }
-        },
-        CAPTCHA_INCORRECT  : {
-            publish : {
-                message : 'Cart.login.failed'
-            }
-        }
-    }
-}
-```
-
-For a more complex implementation of mixins, see the example app in the /examples directory.
-
-#### always
-
-The `always` object is a way to define things that should be done for every query that is executed. This saves you from needing to duplicate the same code over and over. 
-
-```javascript
-always : {
-    timeout : {},
-    waitFor : []
-}
-```
-
-##### timeout  
-The `timeout` property allows you to define a global timeout for the entire workflow. 
-
-For example, you may want to ask the user if they're still there when there has been no activity for a few minutes. Or you may want to raise an error if you app has become unresponsive for some reason. The format of the `timeout` property is the same as when  `timeout` is defined in a response (see docs below).
-
-```javascript
-timeout : {
-    after : 300000,
-    publish : {
-        message : "Cart.issue.detected.GLOBAL_TIMEOUT"
-    },
-    then : "stop."
-},
-```
-
-##### waitFor
-The `waitFor` property is an array of objects defining messages for which to listen, as well as an optional `then` that tells the workflow where to go when the message is received. Whenever your app is waiting for messages, these global `waitFor` messages will be listened for as well.
-
-```javascript
-waitFor : [
-    {
-        waitFor : 'Cart.issue.detected.FATAL_ERROR',
-        then    : 'whichFatalError'
-    },
-    {
-        waitFor : [
-            'Cart.issue.detected.MINOR_WARNING',
-            'Cart.issue.detected.SEVERE_WARNING'
-        ],
-        then      : 'whichWarning'
-    }
-]
-```
-
-If one of the global `waitFor` messages is received, its `then` value is processed in lieu of the `then` defined in the workflow. In other words, the global waitFor's `then` overrides the query response's `then`. This allows you to re-route your workflow whenever certain critical messages are received.
 
 ---
 
@@ -955,7 +991,7 @@ Responses can be set two ways: via query functions in `initObj.queries`, or via 
 ---
 ### stop()
 ---
-### getConfigVar(varName)
+### getVar(varName)
 ---
 ### setResponse(query, response)
 ---
