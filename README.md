@@ -698,7 +698,7 @@ Your `report` function would be passed whatever is defined in the workflow. You 
 
 A workflow is an object literal defined in the init object passed to the Turbine constructor. It is the only mandatory property of the init object.
 
-The workflow has three main properties: `config`, `mixins`, and `queries`. 
+The workflow has two properties: `config` and `queries`. 
 
 ```javascript
 var initObj = {
@@ -706,13 +706,12 @@ var initObj = {
     workflow : {
         
         config  : {},
-        mixins  : {},
         queries : {}
     }
 };
 ```
 
-Each of these properties is also an object. The `config` and `mixins` are optional; `queries` are required.
+Each of these properties is also an object. The `config` is optional; `queries` are required.
 
 Let's look at each one in detail.
 
@@ -727,7 +726,8 @@ config : {
     
     shortcuts : {},
     variables : {},
-    always    : {
+    mixins    : {},
+    always : {
         timeout : {},
         waitFor : []
     }
@@ -804,7 +804,61 @@ queries : {
 }
 ```
 
-The one caveat is that variables can only be used for string, boolean, numeric, or null values. If you want a variable-like way to represent objects, use a mixin instead.
+The one caveat is that variables can only be used for string, boolean, numeric, or null values. If you want a variable-like way to represent object literals, use a mixin instead.
+
+#### mixins
+
+A mixin is basically a variable representing an object literal. Mixins are replaced recursively, so you can use mixins within mixins. You can also use variables and shortcuts within mixins.
+
+```javascript
+mixins : {
+    invalidLogin : {
+        publish : {
+            message : 'Cart.login.failed'
+        }
+    }
+}
+```
+
+To use the mixin in your workflow, you would **reference it with a + symbol**, like `+invalidLogin`:
+
+```javascript
+queries : {
+    
+    whichError : {
+        USERNAME_NOT_FOUND : '+invalidLogin',
+        PASSWORD_INCORRECT : '+invalidLogin',
+        CAPTCHA_INCORRECT  : '+invalidLogin'
+    }
+}
+```
+
+When Turbine imports your workflow, it replaces the mixins like this:
+
+```javascript
+queries : {
+    
+    whichError : {
+        USERNAME_NOT_FOUND : {
+            publish : {
+                message : 'Cart.login.failed'
+            }
+        },
+        PASSWORD_INCORRECT : {
+            publish : {
+                message : 'Cart.login.failed'
+            }
+        },
+        CAPTCHA_INCORRECT  : {
+            publish : {
+                message : 'Cart.login.failed'
+            }
+        }
+    }
+}
+```
+
+For a more complex implementation of mixins, see the example app in the /examples directory.
 
 #### always
 
@@ -852,10 +906,6 @@ waitFor : [
 ```
 
 If one of the global `waitFor` messages is received, its `then` value is processed in lieu of the `then` defined in the workflow. In other words, the global waitFor's `then` overrides the query response's `then`. This allows you to re-route your workflow whenever certain critical messages are received.
-
----
-
-### mixins
 
 ---
 
