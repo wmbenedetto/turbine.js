@@ -302,11 +302,6 @@ if (typeof MINIFIED === 'undefined'){
                 this.workflow.config.variables      = initObj.workflow.config.variables || {};
                 this.workflow.config.always         = initObj.workflow.config.always || {};
 
-                if (this.utils.isObjLiteral(initObj.workflow.mixins)) {
-                    this.importMixins(initObj.workflow);
-                    this.replaceMixins(this.workflow.queries,this.workflow.mixins);
-                }
-
                 if (this.utils.isObjLiteral(initObj.workflow.config)) {
                     this.importConfig(initObj.workflow);
                 }
@@ -329,29 +324,6 @@ if (typeof MINIFIED === 'undefined'){
         },
 
         /**
-         * Imports mixins, recursively replacing any nested mixins
-         *
-         * @param workflow The workflow object containing the mixins
-         */
-        importMixins : function(workflow){
-
-            if (!MINIFIED){
-                this.log('importMixins', 'Importing mixins', workflow.mixins, 'DEBUG');
-            }
-
-            var mixins                          = workflow.mixins || {};
-
-            for (var mixin in mixins){
-
-                if (mixins.hasOwnProperty(mixin)){
-                    this.replaceMixins(mixins[mixin],mixins);
-                }
-            }
-
-            this.workflow.mixins                = mixins;
-        },
-
-        /**
          * Imports workflow config
          *
          * @param workflow The workflow object containing the config
@@ -363,6 +335,11 @@ if (typeof MINIFIED === 'undefined'){
             }
 
             var self                            = this;
+
+            if (this.utils.isObjLiteral(workflow.config.mixins)) {
+                this.importMixins(workflow.config.mixins);
+                this.replaceMixins(this.workflow.queries,this.workflow.config.mixins);
+            }
 
             if (workflow.config.always && workflow.config.always.waitFor) {
 
@@ -382,6 +359,29 @@ if (typeof MINIFIED === 'undefined'){
             /* If a global timeout is specified in the workflow config, then
              * global timeouts are allowed by default */
             this.globalTimeoutAllowed           = typeof workflow.config.always.timeout !== 'undefined';
+        },
+
+        /**
+         * Imports mixins, recursively replacing any nested mixins
+         *
+         * @param mixins The mixins to import
+         */
+        importMixins : function(mixins){
+
+            if (!MINIFIED){
+                this.log('importMixins', 'Importing mixins', mixins, 'DEBUG');
+            }
+
+            mixins                              = mixins || {};
+
+            for (var mixin in mixins){
+
+                if (mixins.hasOwnProperty(mixin)){
+                    this.replaceMixins(mixins[mixin],mixins);
+                }
+            }
+
+            this.workflow.config.mixins         = mixins;
         },
 
         /**
@@ -1409,7 +1409,7 @@ if (typeof MINIFIED === 'undefined'){
          * Build object that associates waitFor messages with the queries to
          * execute once the waitFor message has been received.
          *
-         * This is required because global listeners have different "then" queries
+         * This is required because global listeners can have different "then" queries
          * than listeners in the query's waitFor array
          *
          * @param nextQuery The next query to execute
@@ -1428,7 +1428,7 @@ if (typeof MINIFIED === 'undefined'){
             for (var msg in this.globalListeners) {
 
                 if (this.globalListeners.hasOwnProperty(msg)) {
-                    nextQueryObj[msg]           = this.globalListeners[msg].then;
+                    nextQueryObj[msg]           = this.globalListeners[msg].then || nextQuery;
                 }
             }
 

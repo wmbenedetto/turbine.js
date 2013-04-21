@@ -56,6 +56,41 @@ var cartInit = {
                         then                    : 'isCheckoutStarted'
                     }
                 ]
+            },
+
+            mixins : {
+
+                isCartEmpty : {
+                    yes : {
+                        publish                 : '+EMPTY_CART',
+                        then                    : '@start'
+                    },
+                    no : {
+                        delay : {
+                            for                 : 2500,
+                            publish : {
+                                message         : 'CartExample|checkout|completed',
+                                using : {
+                                    content     : 'success'
+                                }
+                            },
+                            then                : '@start'
+                        }
+                    }
+                },
+
+                APPLIED_DISCOUNT : {
+                    handle                          : 'APPLIED_DISCOUNT',
+                    description                     : '$specialOfferDiscount% discount applied',
+                    discount                        : '$specialOfferDiscount'
+                },
+
+                EMPTY_CART : {
+                    message                         : 'CartExample|issue|detected',
+                    using : {
+                        content                     : 'emptyCart'
+                    }
+                }
             }
         },
 
@@ -65,42 +100,7 @@ var cartInit = {
          * contained in a separate object below. Which query set we'll use is defined
          * at runtime in app.init();
          */
-        queries : null,
-
-        mixins : {
-
-            isCartEmpty : {
-                yes : {
-                    publish                     : '+EMPTY_CART',
-                    then                        : '@start'
-                },
-                no : {
-                    delay : {
-                        for                     : 2500,
-                        publish : {
-                            message             : 'CartExample|checkout|completed',
-                            using : {
-                                content         : 'success'
-                            }
-                        },
-                        then                    : '@start'
-                    }
-                }
-            },
-
-            APPLIED_DISCOUNT : {
-                handle                          : 'APPLIED_DISCOUNT',
-                description                     : '$specialOfferDiscount% discount applied',
-                discount                        : '$specialOfferDiscount'
-            },
-
-            EMPTY_CART : {
-                message                         : 'CartExample|issue|detected',
-                using : {
-                    content                     : 'emptyCart'
-                }
-            }
-        }
+        queries : null
     }
 };
 
@@ -319,6 +319,19 @@ var signupInit = {
 
     workflow : {
 
+        config : {
+
+            mixins : {
+
+                advanceToStep3 : {
+                    publish : {
+                        message                 : 'SignupExample|step|advance|3'
+                    },
+                    then                        : 'stop.'
+                }
+            }
+        },
+
         queries : {
 
             isSignupStarted : {
@@ -395,16 +408,6 @@ var signupInit = {
                     },
                     then                        : 'stop.'
                 }
-            }
-        },
-
-        mixins : {
-
-            advanceToStep3 : {
-                publish : {
-                    message                 : 'SignupExample|step|advance|3'
-                },
-                then                        : 'stop.'
             }
         }
     }
