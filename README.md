@@ -560,20 +560,20 @@ If no reset for a query is defined in `initObj.resets`, then the response is not
 
 *[OBJECT] Aliases for workflow queries*
 
-Shortcuts are a way for you to reference a query by an alias instead of using it directly. This creates greater flexibility in your workflow by decoupling intention from expression. The shortcut name can be an arbitrary string, and you can define as many shortcuts as you want.
+Shortcuts are a way for you to reference a query by an alias instead of using it directly. This creates greater flexibility in your workflow by decoupling intention from expression. The shortcut name can be any arbitrary string, and you can define as many shortcuts as you want.
 
-For example, say you sometimes want your workflow to go back to the beginning based on some query response. You can define a `start` shortcut like this:
+For example, say you sometimes want your workflow to go back to the beginning based on some query response. You can define a `checkout` shortcut like this:
 
 ```javascript
 var initObj = {
     
     shortcuts : {
-        start : 'isCheckoutStarted'
+        checkout : 'isCheckoutStarted'
     }
 }
 ```
 
-To use the shortcut in your workflow, you would **reference it with an @ symbol**, like `@start`:
+To use the shortcut in your workflow, you would **reference it with an @ symbol**, like `@checkout`:
 
 ```javascript
 workflow : {
@@ -589,7 +589,7 @@ workflow : {
     
     isCheckoutCancelled : {
         yes : {
-            then : '@start'
+            then : '@checkout'
         },
         no : {
             // do stuff
@@ -598,9 +598,13 @@ workflow : {
 }
 ```
 
-By using the shortcut, your workflow doesn't need to know which query is the starting query -- it just needs to know to go back to the start of the workflow. 
+By using the shortcut, your workflow doesn't need to know which query is the starting query -- it just needs to know to go back to the query defined by `@checkout`. 
 
-If, in the future, you add additional queries to the beginning of the workflow (therefore changing which query is the starting query), you only need to change the definition of the `start` shortcut in the config.
+If, in the future, you add additional queries to the beginning of your checkout flow, you only need to change the definition of the `checkout` shortcut in the config.
+
+#### @start
+
+You can use any arbitrary string for a shortcut name, but there's one that has special meaning: **@start**. If you define a `start` shortcut, Turbine will use that as the first query to execute when Turbine is started.
 
 ---
 
@@ -924,37 +928,99 @@ Your `report` function would be passed whatever is defined in the workflow. You 
 
 A workflow is an object literal defined in the init object passed to the Turbine constructor. It is the only mandatory property of the init object.
 
----
-
-### config
-
-The `config` property is an optional object literal that defines values to be used elsewhere in the workflow: `shortcuts`, `variables`, and `always`.
+The workflow is essentially a dialog between Turbine and your app. Turbine executes a **query** and receives a **response**. That response tells Turbine what to do next, and which query to execute next.
 
 ```javascript
-config : {
-    
-    shortcuts : {},
-    variables : {},
-    mixins    : {},
-    always : {
-        timeout : {},
-        waitFor : []
+isUserLoggedIn : {
+    yes : {
+        // do something
+    },
+    no : {
+        // do something different
     }
 }
 ```
 
+In this example:
+
+* `isAppStarted` is the **query**
+* `yes` and `no` are the **responses**
+* The object literal values of the `yes` and `no` responses are the **response bodies**
+
+We'll get into details about what exactly goes into the response bodies in a minute. For now, let's just focus on one property: `then`. 
+
+#### then
+
+The `then` property tells Turbine which query to execute next. When you see it in action, it's pretty self-explanatory:
+
+```javascript
+isUserLoggedIn : {
+    yes : {
+        then : 'isUserOver18'
+    },
+    no : {
+        then : 'doesAccountExist'
+    }
+},
+
+isUserOver18 : {
+    yes : {
+        // let the user in
+    },
+    no : {
+        // don't let the user in
+    }
+},
+
+doesAccountExist : {
+    yes : {
+        // make the user log in
+    },
+    no : {
+        // ask the user to create an account
+    }
+}
+```
+
+Turbine's expressive workflow syntax makes it simple to see how the program will flow. For example:
+
+* Is the user logged in? Yes. Is the user over 18? Yes. Then let him in.
+* Is the user logged in? No. Does an account exist? No. Then ask the user to create one.
+* Is the user logged in? No. Does an account exist? Yes. Then ask the user to log in.
+* And so on ...
+
+**Because `then` tells your workflow where to go next, it is required for every response body.** 
+
+If you leave it out, your app will basically freeze -- Turbine will get to the response that has no `then` in the response body, and it won't know where to go from there. Instead, it will just throw an exception.
+
 ---
 
-### queries
+### Queries
+
+When Turbine starts your workflow, it begins with the first query in the workflow (or the `@start` shortcut, if defined.)
+
+To get the response to the query, Turbine checks a few things:
+
+* Has a query function been set in `initObj.queries`? If so, Turbine executes the function and processes its response.
+* If there's no query function, has a response been set using `Turbine.setResponse()`? If so, Turbine uses that value.
+* If no response has been set, has any default response been set in `initObj.responses`? If so, Turbine uses that value.
+* If none of the above exist, then Turbine returns false and processes the "no" response.
 
 ---
 
-#### Responses
+### Responses
+
 Responses can be set two ways: via query functions in `initObj.queries`, or via the `setResponse()` method.
 * yes
 * no
 * *values*
 * default
+
+
+---
+
+### Response bodies
+
 
 #### Each response
 
