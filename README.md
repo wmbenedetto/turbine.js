@@ -1324,18 +1324,101 @@ In the example above, Turbine is waiting for an `App.transaction.complete` messa
 
 Notice that the `no` response body still has its own `then` value -- that is required so Turbine knows where to go if it *does* receive the `App.transaction.complete` message before the timeout.
 
-#### Each response
+#### delay
 
+Sometimes you may want to wait a little while before processing a response body. For example, say you're using Turbine to prototype a loading screen -- you might want to add a 3-second delay, then publish a message to move to the next screen. That's where the `delay` object is useful.
 
+The `delay` object is used in lieu of `then` -- by using `delay`, you are implicitly saying "wait for a while, *then* process the delayed response".
 
-* report
-* delay
-  * for
-  * publish
-  * then
+The `delay` object contains one required property:
 
+* `for` *[Number] The number of milliseconds to wait before processing the delayed response body*
 
+In addition, the `delay` object can contain anything that a response body can contain: `publish`, `waitFor`, `then`, etc. After the delay elapses, the `delay` object is processed as a response body.
 
+```javascript
+isAppLoaded : {
+    no : {
+        delay : {
+            for : 3000,
+            publish : {
+                message : 'App.view.show',
+                using : {
+                    view : 'appLoaded'
+                }
+            },
+            then :  'stop.'
+        }
+    },
+    yes : {
+        // display Loaded message
+    }
+}
+```
+
+In the example above, `isAppLoaded` gets a `no` response. Turbine waits for 3000 ms (3 seconds), publishes the `App.view.show` message, then stops.
+
+Note that `delay` doesn't have to live alone in the response body. It can co-exist with other properties as well. For example:
+
+```javascript
+isAppLoaded : {
+    no : {
+        publish : {
+            message : 'App.view.show',
+            using : {
+                view : 'appLoading'
+            }
+        },
+        delay : {
+            for : 3000,
+            publish : {
+                message : 'App.view.show',
+                using : {
+                    view : 'appLoaded'
+                }
+            },
+            then :  'stop.'
+        }
+    },
+    yes : {
+        // display Loaded message
+    }
+}
+```
+
+#### report
+
+In many ways, Turbine is just a big state machine. As such, it is a centralized mechanism for monitoring the state of your application. If your application is in a state that is worth reporting, you can define `report` in your response body.
+
+The value of `report` can be anything you want: a string, an object, an array, etc.
+
+By default, `report` just passes its value to `console.error()`. However, you can define your own custom `report` function in initObj, allowing you to send reports to Google Analytics, Omniture, or whatever your preferred analytics tool may be.
+
+Consider the example we used for `repeat` earlier. We checked 100 times whether the upload was complete, and it never was. That's the sort of thing you might want to report.
+
+```javascript
+isUploadComplete : {
+    no : {
+        waitFor : 'App.upload.updated',
+        repeat : {
+            limit : 100,
+            publish : {
+                message : 'App.upload.failed',
+                using : {
+                    reason : 'UPLOAD_CHECK_LIMIT_EXCEEDED'
+                }
+            },
+            report : 'APP_UPLOAD_FAILURE',
+            then :  'stop.'
+        }
+    },
+    yes : {
+        // display Done message
+    }
+}
+```
+
+Now `APP_UPLOAD_FAILURE` will be sent to your reporting system so you can investigate why it failed.
 
 ## Examples
 
