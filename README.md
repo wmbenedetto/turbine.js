@@ -414,7 +414,7 @@ Now let's look at what each of these properties means.
 
 The workflow is the jet fuel that powers Turbine. It tells your app what to do, and where to go next after doing it.
 
-Since workflows are a whole topic unto themselves, see the [Building a workflow](#building-a-workflow) section for more details.
+Since workflows are a whole topic unto themselves, see the [Elements of a workflow](#elements-of-a-workflow) section for more details.
 
 ---
 
@@ -924,7 +924,7 @@ Your `report` function would be passed whatever is defined in the workflow. You 
 
 .
 
-## Building a workflow
+## Elements of a workflow
 
 A workflow is an object literal defined in the init object passed to the Turbine constructor. It is the only mandatory property of the init object.
 
@@ -947,7 +947,52 @@ In this example:
 * `yes` and `no` are the **responses**
 * The object literal values of the `yes` and `no` responses are the **response bodies**
 
-We'll get into details about what exactly goes into the response bodies in a minute. For now, let's just focus on one property: `then`. 
+---
+
+### Queries
+
+When Turbine starts your workflow, it begins with the first query in the workflow (or the `@start` shortcut, if defined).
+
+To get the response to the query, Turbine checks a few things:
+
+* Has a query function been set in `initObj.queries`? If so, Turbine executes the function and processes its response.
+* If there's no query function, has a response been set using `Turbine.setResponse()`? If so, Turbine uses that value.
+* If no response has been set, has any default response been set in `initObj.responses`? If so, Turbine uses that value.
+* If none of the above exist, then Turbine returns false and processes the "no" response.
+
+---
+
+### Responses
+
+Responses can be boolean, strings, or numbers. If a response is boolean, true is converted to "yes" and false (or null) is converted to "no".
+
+A query's responses work similiarly to a JavaScript switch/case statement. If the value of the query's response matches any of the responses in the workflow, that response is processed.
+
+In addition, there is the special **default** response. If `default` is defined, and the query's response doesn't match any of the responses defined in the workflow, Turbine will use the `default` response. 
+
+```javascript
+whichError : {
+    INVALID_EMAIL : {
+        // display invalid email error
+    },
+    INVALID_USERNAME : {
+        // display invalid username error
+    },
+    default : {
+        // display generic error
+    }
+}
+```
+
+In this example, if the `whichError` query doesn't return either INVALID_EMAIL or INVALID_USERNAME, then the default response will be processed.
+
+---
+
+### Response bodies
+
+Once a query has been executed and a response has been received, we need to know what to do next. This is expressed in the response body.
+
+We'll get into details about all the things that can go into response bodies in a minute. For now, let's just focus on the most important (and only mandatory) property: `then`. 
 
 #### then
 
@@ -993,33 +1038,46 @@ Turbine's expressive workflow syntax makes it simple to see how the program will
 
 If you leave it out, your app will basically freeze -- Turbine will get to the response that has no `then` in the response body, and it won't know where to go from there. Instead, it will just throw an exception.
 
----
+##### stop. and kill!
 
-### Queries
+Of course, there will be times where your workflow really has no place else to go. In this case, you can set the value of `then` to either `stop.` or `kill!`. Using these special values allows your workflow to clearly indicate that it intends to stop.
 
-When Turbine starts your workflow, it begins with the first query in the workflow (or the `@start` shortcut, if defined.)
+Setting `then` to `stop.` tells Turbine to stop. There are no ill effects -- you can restart Turbine later using `start()`, and it will start over from the beginning of the workflow.
 
-To get the response to the query, Turbine checks a few things:
+Setting `then` to `kill!` not only tells Turbine to stop, but it also prevents it from being started again. If you call `start()` after using `kill!`, Turbine will simply report an error.
 
-* Has a query function been set in `initObj.queries`? If so, Turbine executes the function and processes its response.
-* If there's no query function, has a response been set using `Turbine.setResponse()`? If so, Turbine uses that value.
-* If no response has been set, has any default response been set in `initObj.responses`? If so, Turbine uses that value.
-* If none of the above exist, then Turbine returns false and processes the "no" response.
+*Note that both `stop.` and `kill!` include punctuation -- that is required in order for Turbine to recognize them as special values.*
 
----
+Continuing to flesh out the example above, we can add `stop.` to `isUserOver18.no`:
 
-### Responses
+```javascript
+isUserLoggedIn : {
+    yes : {
+        then : 'isUserOver18'
+    },
+    no : {
+        then : 'doesAccountExist'
+    }
+},
 
-Responses can be set two ways: via query functions in `initObj.queries`, or via the `setResponse()` method.
-* yes
-* no
-* *values*
-* default
+isUserOver18 : {
+    yes : {
+        // let the user in
+    },
+    no : {
+        then : 'stop.'
+    }
+},
 
-
----
-
-### Response bodies
+doesAccountExist : {
+    yes : {
+        // make the user log in
+    },
+    no : {
+        // ask the user to create an account
+    }
+}
+```
 
 
 #### Each response
@@ -1045,6 +1103,9 @@ Responses can be set two ways: via query functions in `initObj.queries`, or via 
   * for
   * publish
   * then
+
+
+
 
 ## Examples
 
