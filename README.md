@@ -992,7 +992,7 @@ In this example, if the `whichError` query doesn't return either INVALID_EMAIL o
 
 Once a query has been executed and a response has been received, we need to know what to do next. This is expressed in the response body.
 
-We'll get into details about all the things that can go into response bodies in a minute. For now, let's just focus on the most important (and only mandatory) property: `then`. 
+We'll get into details about all the things that can go into response bodies in a minute. For now, let's just focus on the most important property: `then`. 
 
 #### then
 
@@ -1034,11 +1034,13 @@ Turbine's expressive workflow syntax makes it simple to see how the program will
 * Is the user logged in? No. Does an account exist? Yes. Then ask the user to log in.
 * And so on ...
 
-*Because `then` tells your workflow where to go next, it is required for every response body.*
+*Because `then` tells your workflow where to go next, it is required for every response body.* 
 
 If you leave it out, your app will basically freeze -- Turbine will get to the response that has no `then` in the response body, and it won't know where to go from there. Instead, it will just throw an exception.
 
-##### stop. and kill!
+(There's a slight caveat to that rule when using the `repeat` property -- more on that later.)
+
+##### Special values : `stop.` and `kill!`
 
 Of course, there will be times where your workflow really has no place else to go. In this case, you can set the value of `then` to either `stop.` or `kill!`. Using these special values allows your workflow to clearly indicate that it intends to stop.
 
@@ -1249,17 +1251,46 @@ isAccountValid : {
 
 Let's assume our user has an account, so we showed him a login form. When that form is submitted, your app publishes a `App.login.submitted` message. Since Turbine is waiting for that message, it follows then `then` property to `isLoginValid`.
 
+#### repeat
 
+Sometimes you may want to repeat the same query over and over again, such as when you are polling a server for a particular response. To do this, you add a `repeat` object in the response body. 
+
+The `repeat` object is used in lieu of `then` -- by using `repeat`, you are implicitly saying "execute this query, *then* execute this query again".
+
+The `repeat` object contains one required property:
+
+* `limit` *[Number or null] The maximum times the query will be repeated. If null, the query will repeat infinitely.*
+
+In addition, the `repeat` object can contain anything that a response body can contain: `publish`, `waitFor`, `then`, etc. If the limit is reached, the repeat object is processed as a response body.
+
+```javascript
+isUploadComplete : {
+    no : {
+        waitFor : 'App.upload.updated',
+        repeat : {
+            limit : 100,
+            publish : {
+                message : 'App.upload.failed',
+                using : {
+                    reason : 'UPLOAD_CHECK_LIMIT_EXCEEDED'
+                }
+            },
+            then :  'stop.'
+        }
+    },
+    yes : {
+        // display Done message
+    }
+}
+```
+
+In the example above, Turbine waits for an `App.upload.updated` message. When it gets one, it repeats the `isUploadComplete` query. If the response is still `no`, then it again waits for `App.upload.updated`.
+
+This continues until `isUploadComplete` is `yes`, or the query repeats 100 times. If the limit is reached, then Turbine executes the repeat object as a response body, publishing `App.upload.failed` and then stopping.
 
 #### Each response
 
-* publish
-  * message
-  * using
-* waitFor
-* then
-  * stop.
-  * kill!
+
 * repeat
   * limit
   * publish
