@@ -1261,7 +1261,7 @@ The `repeat` object contains one required property:
 
 * `limit` *[Number or null] The maximum times the query will be repeated. If null, the query will repeat infinitely.*
 
-In addition, the `repeat` object can contain anything that a response body can contain: `publish`, `waitFor`, `then`, etc. If the limit is reached, the repeat object is processed as a response body.
+In addition, the `repeat` object can contain anything that a response body can contain: `publish`, `waitFor`, `then`, etc. If the limit is reached, the `repeat` object is processed as a response body.
 
 ```javascript
 isUploadComplete : {
@@ -1288,19 +1288,47 @@ In the example above, Turbine waits for an `App.upload.updated` message. When it
 
 This continues until `isUploadComplete` is `yes`, or the query repeats 100 times. If the limit is reached, then Turbine executes the repeat object as a response body, publishing `App.upload.failed` and then stopping.
 
+#### timeout
+
+One of the drawbacks of an event-driven workflow engine is that if it's waiting for a message that never comes, it is basically stuck. To help avoid that situation, a `timeout` object is available.
+
+The `timeout` object allows you to specify an alternate response body to process after a certain amount of time elapses. It contains one required property:
+
+* `after` *[Number] The number of milliseconds after which the timeout will fire*
+
+In addition, the `timeout` object can contain anything that a response body can contain: `publish`, `waitFor`, `then`, etc. If the timeout is exceeded, the `timeout` object is processed as a response body.
+
+```javascript
+isTransactionComplete : {
+    no : {
+        waitFor : 'App.transaction.completed',
+        timeout : {
+            after : 300000,
+            publish : {
+                message : 'App.transaction.failed',
+                using : {
+                    reason : 'TIMEOUT_EXCEEDED'
+                }
+            },
+            then :  'stop.'
+        },
+        then : 'isTransactionComplete'
+    },
+    yes : {
+        // display Done message
+    }
+}
+```
+
+In the example above, Turbine is waiting for an `App.transaction.complete` message. If it doesn't receive it after 300000 milliseconds (5 mins), it publishes an `App.transaction.failed` message, then stops.
+
+Notice that the `no` response body still has its own `then` value -- that is required so Turbine knows where to go if it *does* receive the `App.transaction.complete` message before the timeout.
+
 #### Each response
 
 
-* repeat
-  * limit
-  * publish
-  * waitFor
-  * then
+
 * report
-* timeout
-  * after
-  * publish
-  * then
 * delay
   * for
   * publish
