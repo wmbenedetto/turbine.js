@@ -299,10 +299,6 @@ var signupInit = {
     name                                        : 'SignupExample',
     logLevel                                    : 'DEBUG',
 
-    queries : {
-
-    },
-
     resets : {
         isSignupStarted                         : true
     },
@@ -325,20 +321,20 @@ var signupInit = {
 
         isSignupStarted : {
             yes : {
-                waitFor                     : 'Signup|gender|selected',
-                then                        : 'whichGender'
+                waitFor                         : 'Signup|gender|selected',
+                then                            : 'whichGender'
             },
             no : {
-                then                        : 'stop.'
+                then                            : 'stop.'
             }
         },
 
         whichGender : {
             male : {
                 publish : {
-                    message                 : 'SignupExample|step|advance|2',
+                    message                     : 'SignupExample|step|advance|2',
                     using : {
-                        thing               : 'sport',
+                        thing                   : 'sport',
                         options : [
                             'Baseball',
                             'Football',
@@ -347,14 +343,14 @@ var signupInit = {
                         ]
                     }
                 },
-                waitFor                     : 'Signup|favorite|selected',
-                then                        : 'likes'
+                waitFor                         : 'Signup|favorite|selected',
+                then                            : 'likes'
             },
             female : {
                 publish : {
-                    message                 : 'SignupExample|step|advance|2',
+                    message                     : 'SignupExample|step|advance|2',
                     using : {
-                        thing               : 'animal',
+                        thing                   : 'animal',
                         options : [
                             'Cat',
                             'Dog',
@@ -363,14 +359,14 @@ var signupInit = {
                         ]
                     }
                 },
-                waitFor                     : 'Signup|favorite|selected',
-                then                        : 'likes'
+                waitFor                         : 'Signup|favorite|selected',
+                then                            : 'likes'
             },
             other : {
                 publish : {
-                    message                 : 'SignupExample|step|advance|2',
+                    message                     : 'SignupExample|step|advance|2',
                     using : {
-                        thing               : 'breakfast',
+                        thing                   : 'breakfast',
                         options : [
                             'Pancakes',
                             'Bacon',
@@ -379,23 +375,23 @@ var signupInit = {
                         ]
                     }
                 },
-                waitFor                     : 'Signup|favorite|selected',
-                then                        : 'likes'
+                waitFor                         : 'Signup|favorite|selected',
+                then                            : 'likes'
             }
         },
 
         likes : {
-            basketball                      : '+advanceToStep3',
-            dog                             : '+advanceToStep3',
-            eggs                            : '+advanceToStep3',
+            basketball                          : '+advanceToStep3',
+            dog                                 : '+advanceToStep3',
+            eggs                                : '+advanceToStep3',
             default : {
                 publish : {
-                    message                 : 'SignupExample|signup|completed',
+                    message                     : 'SignupExample|signup|completed',
                     using : {
-                        showThanks          : true
+                        showThanks              : true
                     }
                 },
-                then                        : 'stop.'
+                then                            : 'stop.'
             }
         }
     }

@@ -1719,7 +1719,7 @@ if (typeof MINIFIED === 'undefined'){
             this.responses[query]               = (this.hasQueryFunction(query)) ? this.queries[query]() : this.responses[query];
 
             /* Convert boolean result to yes/no string */
-            if (typeof this.responses[query] === 'boolean' || !this.responses[query]) {
+            if (typeof this.responses[query] === 'boolean' || this.responses[query] === null) {
                 this.responses[query]           = (this.responses[query]) ? 'yes' : 'no';
             }
 
