@@ -562,7 +562,7 @@ If no reset for a query is defined in `initObj.resets`, then the response is not
 
 Shortcuts are a way for you to reference a query by an alias instead of using it directly. This creates greater flexibility in your workflow by decoupling intention from expression. The shortcut name can be any arbitrary string, and you can define as many shortcuts as you want.
 
-For example, say you sometimes want your workflow to go back to the beginning based on some query response. You can define a `checkout` shortcut like this:
+For example, say you sometimes want your workflow to go back to the beginning of the checkout process based on some query response. You can define a `checkout` shortcut like this:
 
 ```javascript
 var initObj = {
@@ -943,7 +943,7 @@ isUserLoggedIn : {
 
 In this example:
 
-* `isAppStarted` is the **query**
+* `isUserLoggedIn` is the **query**
 * `yes` and `no` are the **responses**
 * The object literal values of the `yes` and `no` responses are the **response bodies**
 
