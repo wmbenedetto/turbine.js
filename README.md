@@ -1038,7 +1038,7 @@ Turbine's expressive workflow syntax makes it simple to see how the program will
 
 If you leave it out, your app will basically freeze -- Turbine will get to the response that has no `then` in the response body, and it won't know where to go from there. Instead, it will just throw an exception.
 
-(There's a slight caveat to that rule when using the `repeat` property -- more on that later.)
+(There's a slight caveat to that rule when using the `repeat` or `delay` property -- more on that later.)
 
 ##### Special values : `stop.` and `kill!`
 
