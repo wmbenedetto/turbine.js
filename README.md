@@ -1034,7 +1034,7 @@ Turbine's expressive workflow syntax makes it simple to see how the program will
 * Is the user logged in? No. Does an account exist? Yes. Then ask the user to log in.
 * And so on ...
 
-**Because `then` tells your workflow where to go next, it is required for every response body.** 
+*Because `then` tells your workflow where to go next, it is required for every response body.*
 
 If you leave it out, your app will basically freeze -- Turbine will get to the response that has no `then` in the response body, and it won't know where to go from there. Instead, it will just throw an exception.
 
@@ -1065,6 +1065,7 @@ isUserOver18 : {
         // let the user in
     },
     no : {
+        // don't let the user in
         then : 'stop.'
     }
 },
@@ -1078,6 +1079,176 @@ doesAccountExist : {
     }
 }
 ```
+
+#### publish
+
+Turbine is an event-driven workflow engine, so it communicates with your app by publishing messages from the workflow using the `publish` function defined in your initObj, or `jQuery.trigger()` by default.
+
+To tell Turbine to publish a message, you define a `publish` object in the response body. This object has two properties: 
+
+* `message` *[String or Array] The message to publish, or an array of messages to publish*
+* `using` *[Object] Optional data object to accompany published message*
+
+Let's publish some messages in our example:
+
+```javascript
+isUserLoggedIn : {
+    yes : {
+        then : 'isUserOver18'
+    },
+    no : {
+        then : 'doesAccountExist'
+    }
+},
+
+isUserOver18 : {
+    yes : {
+        // let the user in
+        publish : {
+            message : 'App.view.show',
+            using : {
+                view : 'loginAccepted',
+                content : 'ENTRY_ACCEPTED'
+            }
+        },
+        then : 'stop.'
+    },
+    no : {
+        // don't let the user in
+        publish : {
+            message : [
+                'User.age.rejected', 
+                'App.view.show'
+            ],
+            using : {
+                view : 'loginRejected',
+                content : 'NOT_OLD_ENOUGH'
+            }
+        }
+        then : 'stop.'
+    }
+},
+
+doesAccountExist : {
+    yes : {
+        // make the user log in
+        publish : {
+            message : 'App.view.show',
+            using : {
+                view : 'logIn'
+            }
+        }
+    },
+    no : {
+        // ask the user to create an account
+        publish : {
+            message : 'App.view.show',
+            using : {
+                view : 'createAccount'
+            }
+        }
+    }
+}
+```
+
+Of course, publishing a message doesn't do much if there's nothing listening for it in your app. The expectation is that when your workflow publishes `App.view.show`, your app is listening for that message. Your app can then use the values from the `using` object to determine which view to show, and which content to use when showing it.
+
+#### waitFor
+
+In the `isUserOver18` query above, both responses have `then : 'stop.'` in their response bodies. In those cases, after the workflow publishes its message, it's done. There's nothing left to do after the appropriate view is shown.
+
+But what about in the `doesAccountExist` query? We want the user to either log in or create an account, so we published an `App.view.show` message from your workflow, your app was listening for it, it showed the view ... now what?
+
+We need a way for the app to tell Turbine that it is done doing whatever it needed to do. For that, we use `waitFor`.
+
+The `waitFor` property accepts either a message or array of messages for which Turbine should listen. Once Turbine receives a message it was waiting for, it continues where it left off, going wherever the `then` property tells it to go.
+
+Let's add some `waitFor` and `then` properties to the `doesAccountExist` response bodies. We'll also need to add two new queries: `isLoginValid` and `isAccountValid`:
+
+```javascript
+isUserLoggedIn : {
+    yes : {
+        then : 'isUserOver18'
+    },
+    no : {
+        then : 'doesAccountExist'
+    }
+},
+
+isUserOver18 : {
+    yes : {
+        // let the user in
+        publish : {
+            message : 'App.view.show',
+            using : {
+                view : 'loginAccepted',
+                content : 'ENTRY_ACCEPTED'
+            }
+        },
+        then : 'stop.'
+    },
+    no : {
+        // don't let the user in
+        publish : {
+            message : [
+                'User.age.rejected', 
+                'App.view.show'
+            ],
+            using : {
+                view : 'loginRejected',
+                content : 'NOT_OLD_ENOUGH'
+            }
+        }
+        then : 'stop.'
+    }
+},
+
+doesAccountExist : {
+    yes : {
+        // make the user log in
+        publish : {
+            message : 'App.view.show',
+            using : {
+                view : 'logIn'
+            }
+        },
+        waitFor : 'App.login.submitted',
+        then : 'isLoginValid'
+    },
+    no : {
+        // ask the user to create an account
+        publish : {
+            message : 'App.view.show',
+            using : {
+                view : 'createAccount'
+            }
+        },
+        waitFor : 'App.account.created',
+        then : 'isAccountValid'
+    }
+},
+
+isLoginValid : {
+    yes : {
+        then : 'isUserOver18'
+    },
+    no : {
+        // show login error
+    }
+},
+
+isAccountValid : {
+    yes : {
+        then : 'isUserOver18'
+    },
+    no : {
+        // show login error
+    }
+}
+```
+
+Let's assume our user has an account, so we showed him a login form. When that form is submitted, your app publishes a `App.login.submitted` message. Since Turbine is waiting for that message, it follows then `then` property to `isLoginValid`.
+
 
 
 #### Each response
