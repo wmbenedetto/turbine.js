@@ -333,7 +333,7 @@ if (typeof MINIFIED === 'undefined'){
 
                         (function(listener) {
 
-                            self.importGlobalListener(listener);
+                            self.importGlobalWaitFor(listener);
 
                         }(this.always.waitFor[i]));
                     }
@@ -1284,27 +1284,29 @@ if (typeof MINIFIED === 'undefined'){
         },
 
         /**
-         * Imports global listener from workflow
+         * Imports global waitFor
          *
-         * @param listener The listener to import
+         * @param waitFor The waitFor to import
          */
-        importGlobalListener : function(listener) {
+        importGlobalWaitFor : function(waitFor) {
 
             if (!MINIFIED){
-                this.log('importGlobalListener', 'Importing global listener', listener, 'TRACE');
+                this.log('importGlobalWaitFor', 'Importing global waitFor', waitFor, 'TRACE');
             }
 
-            this.replaceShortcuts(listener);
-            this.replaceVariables(listener);
+            this.replaceShortcuts(waitFor);
+            this.replaceVariables(waitFor);
 
-            if (typeof listener.waitFor === 'string') {
-                listener.waitFor                = [listener.waitFor];
+            if (typeof waitFor.message === 'string') {
+                waitFor.message                = [waitFor.message];
             }
 
-            for (var i=0;i<listener.waitFor.length;i++) {
+            var waitingFor                      = this.buildWaitingForObj(waitFor);
 
-                var msg                         = listener.waitFor[i];
-                this.globalListeners[msg]       = listener;
+            for (var i=0;i<waitFor.message.length;i++) {
+
+                var msg                         = waitFor.message[i];
+                this.globalListeners[msg]       = waitFor;
                 this.numGlobalListeners        += 1;
             }
         },
@@ -1313,15 +1315,15 @@ if (typeof MINIFIED === 'undefined'){
          * Queues query to be executed on next event
          *
          * @param query The query to queue
-         * @param message The message(s) to wait for before executing the next query
+         * @param waitFor The message(s) to wait for before executing the next query
          */
-        queue : function(query,message) {
+        queue : function(query,waitFor) {
 
             if (this.waitingFor) {
                 this.remove(this.waitingFor);
             }
 
-            this.waitingFor                     = this.buildWaitingForObj(message);
+            this.waitingFor                     = this.buildWaitingForObj(waitFor);
             this.nextQueryObj                   = this.buildNextQueryObj(query,this.waitingFor);
             this.nextQuery                      = query;
 
@@ -1350,24 +1352,64 @@ if (typeof MINIFIED === 'undefined'){
          * Builds object containing array of the current waitFor messages,
          * along with global listeners.
          *
-         * @param message Array of messages to wait for
+         * @param waitFor Message or array of messages to wait for
          */
-        buildWaitingForObj : function(message) {
+        buildWaitingForObj : function(waitFor) {
 
-            var waitingFor                      = (message) ? message : [];
+            var waitingFor                      = [];
 
-            if (!this.utils.isArray(waitingFor)) {
-                waitingFor                      = [waitingFor];
+            /**
+             * waitFor can either be a message, an array of messages,
+             * an object with a message property, or an array of objects
+             * with message properties. The code below figures out which
+             * we're dealing with and pushes the message onto the waitingFor array
+             */
+            if (waitFor){
+
+                if (typeof waitFor === 'string'){
+
+                    waitingFor.push(waitFor);
+
+                } else {
+
+                    if (this.utils.isObjLiteral(waitFor)) {
+                        waitFor                 = [waitFor];
+                    }
+
+                    for (var j=0;j<waitFor.length;j++){
+
+                        if (waitFor.hasOwnProperty(j)){
+
+                            if (typeof waitFor[j] === 'string'){
+
+                                waitingFor.push(waitFor[j]);
+
+                            } else if (typeof waitFor[j].message !== 'undefined'){
+
+                                if (this.utils.isArray(waitFor[j].message)){
+
+                                    for (var k=0;k<waitFor[j].message.length;k++){
+                                        waitingFor.push(waitFor[j].message[k]);
+                                    }
+
+                                } else {
+
+                                    waitingFor.push(waitFor[j].message);
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
-            /* Add global listeners to waitingFor object, if they're not already there */
+            /* Add global listeners to waitingFor array, if they're not already there */
             for (var msg in this.globalListeners) {
 
                 if (this.globalListeners.hasOwnProperty(msg)) {
 
-                    for (var i=0;i<this.globalListeners[msg].waitFor.length;i++) {
+                    for (var i=0;i<this.globalListeners[msg].message.length;i++) {
 
-                        var globalListener      = this.globalListeners[msg].waitFor[i];
+                        var globalListener      = this.globalListeners[msg].message[i];
 
                         if (!this.utils.inArray(globalListener,waitingFor)) {
                             waitingFor.push(globalListener);

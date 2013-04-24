@@ -48,7 +48,7 @@ var cartInit = {
 
         waitFor : [
             {
-                waitFor                         : 'Cart|checkout|started',
+                message                         : 'Cart|checkout|started',
                 then                            : 'isCheckoutStarted'
             }
         ]
