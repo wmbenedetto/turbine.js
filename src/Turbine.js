@@ -123,7 +123,7 @@ if (typeof MINIFIED === 'undefined'){
         }
 
         this.always                             = {};
-        this.globalListeners                    = {};
+        this.alwaysWaitFor                      = {};
         this.globalTimeoutAllowed               = false;
         this.logLevel                           = initObj.logLevel  || 'ERROR';
         this.name                               = initObj.name      || 'Turbine';
@@ -182,7 +182,6 @@ if (typeof MINIFIED === 'undefined'){
 
                 listen : function(message,handler){
                     $(self).on(message,function(e) {
-                        console.log(e);
                         handler(e.type, e.data);
                     });
                 },
@@ -323,20 +322,18 @@ if (typeof MINIFIED === 'undefined'){
                 this.log('importAlways', 'Importing always', this.always, 'DEBUG');
             }
 
-            var self                            = this;
+            if (typeof this.always.waitFor !== 'undefined'){
 
-            if (this.utils.isArray(this.always.waitFor)) {
+                this.replaceShortcuts(this.always.waitFor);
+                this.replaceVariables(this.always.waitFor);
 
-                for (var i in this.always.waitFor) {
+                var result                      = this.parseWaitFor(this.always.waitFor);
 
-                    if (this.always.waitFor.hasOwnProperty(i)) {
+                this.alwaysWaitFor              = result.nextQueryObj;
+                this.numAlwaysWaitFor           = result.waitingFor.length;
 
-                        (function(listener) {
-
-                            self.importGlobalWaitFor(listener);
-
-                        }(this.always.waitFor[i]));
-                    }
+                if (!MINIFIED){
+                    this.log('importAlways', 'Always wait for', this.alwaysWaitFor, 'DEBUG');
                 }
             }
 
@@ -810,6 +807,7 @@ if (typeof MINIFIED === 'undefined'){
 
                     if (response.repeat) {
 
+                        /* Clean up isAfterDelay flag */
                         if (response.isAfterDelay) {
 
                             try {
@@ -822,27 +820,24 @@ if (typeof MINIFIED === 'undefined'){
                         /* "repeat" repeats query */
                         this.repeat(query,response);
 
-                    } else if (response.then) {
+                    }
+                    /* "waitFor" tells us to wait for an event (or events) before executing "then" query */
+                    else if (response.waitFor) {
 
-                        /* "waitFor" tells us to wait for an event (or events) before executed "then" query */
-                        if (response.waitFor) {
+                        this.queue(response.then,response.waitFor);
 
-                            if (this.isEarlierQuery(response.then,query)) {
+                    }
+                    /* Otherwise, "then" query gets executed immediately */
+                    else if (response.then){
 
-                                this.rewind(query,response.then,response.waitFor);
+//                        if (this.isEarlierQuery(response.then,query)) {
+//                            this.rewind(query,response.then);
+//                        }
 
-                            } else {
-
-                                this.queue(response.then,response.waitFor);
-                            }
-                        }
-                        /* Otherwise, "then" query gets executed immediately */
-                        else {
-
-                            this.exec(response.then);
-                        }
+                        this.exec(response.then);
                     }
 
+                    /* Clean up isPublishCallback flag */
                     if (response.isPublishCallback) {
 
                         try {
@@ -857,6 +852,7 @@ if (typeof MINIFIED === 'undefined'){
                         this.setResponseTimeout(query,response);
                     }
 
+                    /* Clean up isAfterDelay flag */
                     if (response.isAfterDelay) {
 
                         try {
@@ -961,7 +957,7 @@ if (typeof MINIFIED === 'undefined'){
                      * being pushed onto the array over and over. Slicing them off here means they can be added again
                      * without stacking up. */
                     if (this.utils.isArray(response.waitFor) && response.repeat.counter > 1) {
-                        response.waitFor        = response.waitFor.slice(0,response.waitFor.length - this.numGlobalListeners);
+                        response.waitFor        = response.waitFor.slice(0,response.waitFor.length - this.numAlwaysWaitFor);
                     }
 
                     this.queue(query,response.waitFor);
@@ -979,9 +975,8 @@ if (typeof MINIFIED === 'undefined'){
          *
          * @param from The query from which to start the rewind
          * @param to The query to which we're rewinding
-         * @param eventHandle The event handle to wait for before executing the next query
          */
-        rewind : function(from,to,eventHandle) {
+        rewind : function(from,to) {
 
             this.clearTimers();
 
@@ -991,7 +986,7 @@ if (typeof MINIFIED === 'undefined'){
             to                                  = to || this.queryOrder[0];
 
             if (!MINIFIED){
-                this.log('rewind', 'Rewinding from ' + from + ' to ' + to, null, 'TRACE');
+                this.log('rewind', 'Rewinding from ' + from + ' to ' + to, null, 'DEBUG');
             }
 
             this.publish('Turbine|workflow|rewind',{
@@ -1016,10 +1011,6 @@ if (typeof MINIFIED === 'undefined'){
                 if (query === to) {
                     break;
                 }
-            }
-
-            if (!this.isKilled()){
-                this.queue(to,eventHandle);
             }
         },
 
@@ -1094,10 +1085,24 @@ if (typeof MINIFIED === 'undefined'){
          */
         resetResponse : function(query) {
 
+            var didReset                        = false;
+
             if (typeof this.resets[query] === 'function'){
+
                 this.responses[query]           = this.resets[query]();
+                didReset                        = true;
+
             } else if (typeof this.resets[query] !== 'undefined'){
+
                 this.responses[query]           = this.resets[query];
+                didReset                        = true;
+            }
+
+            if (!MINIFIED){
+
+                if (didReset){
+                    this.log('resetResponse', 'Reset ' + query + ' response to', this.responses[query] || 'false', 'TRACE');
+                }
             }
         },
 
@@ -1284,48 +1289,22 @@ if (typeof MINIFIED === 'undefined'){
         },
 
         /**
-         * Imports global waitFor
-         *
-         * @param waitFor The waitFor to import
-         */
-        importGlobalWaitFor : function(waitFor) {
-
-            if (!MINIFIED){
-                this.log('importGlobalWaitFor', 'Importing global waitFor', waitFor, 'TRACE');
-            }
-
-            this.replaceShortcuts(waitFor);
-            this.replaceVariables(waitFor);
-
-            if (typeof waitFor.message === 'string') {
-                waitFor.message                = [waitFor.message];
-            }
-
-            var waitingFor                      = this.buildWaitingForObj(waitFor);
-
-            for (var i=0;i<waitFor.message.length;i++) {
-
-                var msg                         = waitFor.message[i];
-                this.globalListeners[msg]       = waitFor;
-                this.numGlobalListeners        += 1;
-            }
-        },
-
-        /**
          * Queues query to be executed on next event
          *
-         * @param query The query to queue
+         * @param nextQuery The query to queue
          * @param waitFor The message(s) to wait for before executing the next query
          */
-        queue : function(query,waitFor) {
+        queue : function(nextQuery,waitFor) {
 
             if (this.waitingFor) {
                 this.remove(this.waitingFor);
             }
 
-            this.waitingFor                     = this.buildWaitingForObj(waitFor);
-            this.nextQueryObj                   = this.buildNextQueryObj(query,this.waitingFor);
-            this.nextQuery                      = query;
+            var result                          = this.parseWaitFor(waitFor,nextQuery,true);
+
+            this.waitingFor                     = result.waitingFor;
+            this.nextQueryObj                   = result.nextQueryObj;
+            this.nextQuery                      = nextQuery;
 
             if (this.waitingFor.length > 0){
 
@@ -1344,31 +1323,34 @@ if (typeof MINIFIED === 'undefined'){
                     this.log('queue', 'Waiting for', this.waitingFor);
                 }
 
-                this.log('queue', 'Queuing ' + this.nextQuery + ' query');
+                this.log('queue', 'Queuing next query', this.nextQueryObj);
             }
         },
 
         /**
-         * Builds object containing array of the current waitFor messages,
-         * along with global listeners.
+         * Parses waitFor into two forms: an array of the messages to wait for,
+         * and an object that maps messages to the next query to execute when the
+         * message is received.
+         *
+         * waitFor can either be a message, an array of messages, an object with a
+         * message property, or an array of objects with message properties.
          *
          * @param waitFor Message or array of messages to wait for
+         * @param nextQuery The query to queue ("then")
+         * @param appendAlwaysWaitFor If true, always waitFor values are included
          */
-        buildWaitingForObj : function(waitFor) {
+        parseWaitFor : function(waitFor,nextQuery,appendAlwaysWaitFor) {
 
             var waitingFor                      = [];
+            var nextQueryObj                    = {};
 
-            /**
-             * waitFor can either be a message, an array of messages,
-             * an object with a message property, or an array of objects
-             * with message properties. The code below figures out which
-             * we're dealing with and pushes the message onto the waitingFor array
-             */
             if (waitFor){
 
+                /* waitFor is a single message, so we map it to nextQuery */
                 if (typeof waitFor === 'string'){
 
                     waitingFor.push(waitFor);
+                    nextQueryObj[waitFor] = nextQuery;
 
                 } else {
 
@@ -1378,24 +1360,24 @@ if (typeof MINIFIED === 'undefined'){
 
                     for (var j=0;j<waitFor.length;j++){
 
-                        if (waitFor.hasOwnProperty(j)){
+                        if (typeof waitFor[j] === 'string'){
 
-                            if (typeof waitFor[j] === 'string'){
+                            waitingFor.push(waitFor[j]);
+                            nextQueryObj[waitFor[j]] = nextQuery;
 
-                                waitingFor.push(waitFor[j]);
+                        } else if (typeof waitFor[j].message !== 'undefined'){
 
-                            } else if (typeof waitFor[j].message !== 'undefined'){
+                            if (this.utils.isArray(waitFor[j].message)){
 
-                                if (this.utils.isArray(waitFor[j].message)){
-
-                                    for (var k=0;k<waitFor[j].message.length;k++){
-                                        waitingFor.push(waitFor[j].message[k]);
-                                    }
-
-                                } else {
-
-                                    waitingFor.push(waitFor[j].message);
+                                for (var k=0;k<waitFor[j].message.length;k++){
+                                    waitingFor.push(waitFor[j].message[k]);
+                                    nextQueryObj[waitFor[j].message[k]] = waitFor[j].then || nextQuery;
                                 }
+
+                            } else {
+
+                                waitingFor.push(waitFor[j].message);
+                                nextQueryObj[waitFor[j].message] = waitFor[j].then || nextQuery;
                             }
                         }
                     }
@@ -1403,52 +1385,22 @@ if (typeof MINIFIED === 'undefined'){
             }
 
             /* Add global listeners to waitingFor array, if they're not already there */
-            for (var msg in this.globalListeners) {
+            if (appendAlwaysWaitFor){
 
-                if (this.globalListeners.hasOwnProperty(msg)) {
+                for (var msg in this.alwaysWaitFor) {
 
-                    for (var i=0;i<this.globalListeners[msg].message.length;i++) {
+                    if (this.alwaysWaitFor.hasOwnProperty(msg)) {
 
-                        var globalListener      = this.globalListeners[msg].message[i];
-
-                        if (!this.utils.inArray(globalListener,waitingFor)) {
-                            waitingFor.push(globalListener);
-                        }
+                        waitingFor.push(msg);
+                        nextQueryObj[msg] = this.alwaysWaitFor[msg] || nextQuery;
                     }
                 }
             }
 
-            return waitingFor;
-        },
-
-        /**
-         * Build object that associates waitFor messages with the queries to
-         * execute once the waitFor message has been received.
-         *
-         * This is required because global listeners can have different "then" queries
-         * than listeners in the query's waitFor array
-         *
-         * @param nextQuery The next query to execute
-         * @param waitingFor Array of messages to wait for
-         */
-        buildNextQueryObj : function(nextQuery,waitingFor) {
-
-            var nextQueryObj                    = {};
-
-            /* Add query waitFor messages to waitingFor object */
-            for (var i=0;i<waitingFor.length;i++) {
-                nextQueryObj[waitingFor[i]]     = nextQuery;
+            return {
+                waitingFor   : waitingFor,
+                nextQueryObj : nextQueryObj
             }
-
-            /* Add global listeners to waitingFor object */
-            for (var msg in this.globalListeners) {
-
-                if (this.globalListeners.hasOwnProperty(msg)) {
-                    nextQueryObj[msg]           = this.globalListeners[msg].then || nextQuery;
-                }
-            }
-
-            return nextQueryObj;
         },
 
         /**
@@ -1483,7 +1435,9 @@ if (typeof MINIFIED === 'undefined'){
 
             this.waitingFor                     = null;
 
-            this.next();
+            if (!this.isKilled()){
+                this.next();
+            }
 
             return true;
         },

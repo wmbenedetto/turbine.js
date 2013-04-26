@@ -46,12 +46,10 @@ var cartInit = {
             then                                : "stop."
         },
 
-        waitFor : [
-            {
-                message                         : 'Cart|checkout|started',
-                then                            : 'isCheckoutStarted'
-            }
-        ]
+        waitFor : {
+            message                             : 'Cart|checkout|started',
+            then                                : 'isCheckoutStarted'
+        }
     },
 
     mixins : {
@@ -108,8 +106,10 @@ var queries = {
 
         isCartStarted : {
             yes : {
-                waitFor                         : 'Cart|item|added',
-                then                            : 'isLoggedIn'
+                waitFor : {
+                    message                     : 'Cart|item|added',
+                    then                        : 'isLoggedIn'
+                }
             },
             no : {
                 then                            : 'stop.'
@@ -170,7 +170,7 @@ var queries = {
                     }
                 },
                 report                          : '+APPLIED_DISCOUNT',
-                then                            : 'isCheckoutStarted'
+                then                            : '@start'
             },
             no : {
                 "then"                          : "@start"
