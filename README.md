@@ -728,7 +728,7 @@ var initObj = {
 #### timeout  
 The `timeout` property allows you to define a global timeout for the entire workflow. 
 
-For example, you may want to ask the user if they're still there when there has been no activity for a few minutes. Or you may want to raise an error if you app has become unresponsive for some reason. The format of the `timeout` property is the same as when  `timeout` is defined in a response (see docs below).
+For example, you may want to ask the user if they're still there when there has been no activity for a few minutes. Or you may want to raise an error if you app has become unresponsive for some reason. The format of the `timeout` property is the same as when  `timeout` is defined in a response (see [docs](#timeout-1) below).
 
 ```javascript
 timeout : {
@@ -743,7 +743,7 @@ timeout : {
 #### waitFor
 The `waitFor` property defines messages for which to listen, as well as an optional `then` that tells the workflow where to go when a message is received. Whenever your app is waiting for messages, these global `waitFor` messages will be listened for as well.
 
-The format of the `waitFor` property is the same as when `waitFor` is defined in a response (see docs below).
+The format of the `waitFor` property is the same as when `waitFor` is defined in a response (see [docs](#waitfor-1) below).
 
 #### using
 
@@ -1349,10 +1349,10 @@ isAgeGateRequired : {
             }
             {
                 message : 'App.button.clicked.HELP',
-                then : 'isOldEnough'
+                then : 'isHelpLoaded'
             }
         ],
-        then : 'isLoggedIn' 
+        then : 'isOldEnough' 
     },
     no : {
         // do stuff
@@ -1360,7 +1360,7 @@ isAgeGateRequired : {
 }
 ```
 
-In the example above, the `App.button.clicked.YES` and `App.button.clicked.NO` will execute `isLoggedIn` next, whereas `App.button.clicked.HELP` will execute `isOldEnough`.
+In the example above, the `App.button.clicked.YES` and `App.button.clicked.NO` will execute `isOldEnough` next, whereas `App.button.clicked.HELP` will execute `isHelpLoaded`.
 
 #### repeat
 
