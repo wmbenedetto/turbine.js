@@ -2,7 +2,6 @@
 if (typeof MINIFIED === 'undefined'){
     MINIFIED = false;
 }
-
 /**
  *   ________  ______  ____  _____   ________     _______
  *  /_  __/ / / / __ \/ __ )/  _/ | / / ____/    / / ___/
@@ -124,6 +123,8 @@ if (typeof MINIFIED === 'undefined'){
 
         this.always                             = {};
         this.alwaysWaitFor                      = {};
+        this.currentQuery                       = null;
+        this.dirtyQueries                       = {};
         this.globalTimeoutAllowed               = false;
         this.logLevel                           = initObj.logLevel  || 'ERROR';
         this.name                               = initObj.name      || 'Turbine';
@@ -538,11 +539,7 @@ if (typeof MINIFIED === 'undefined'){
             payload                             = payload || {};
 
             if (!MINIFIED){
-
-                /* Only log internal Turbine messages if log level is TRACE */
-                var logLevel                    = (payload.isInternalTurbineMsg) ? 'TRACE' : 'INFO';
-
-                this.log('publish', 'Publishing message:', message, logLevel);
+                this.log('publish', 'Publishing message:', message);
             }
 
             if (typeof message === 'string') {
@@ -627,9 +624,7 @@ if (typeof MINIFIED === 'undefined'){
 
             this.started                        = true;
 
-            this.publish('Turbine|workflow|started', { isInternalTurbineMsg : true });
-            this.queue(this.getStartingQuery());
-
+            this.queue(null,this.getStartingQuery());
             this.next();
         },
 
@@ -645,8 +640,6 @@ if (typeof MINIFIED === 'undefined'){
             this.started                        = false;
 
             this.rewind();
-
-            this.publish('Turbine|workflow|stopped',{ isInternalTurbineMsg : true });
         },
 
         /**
@@ -662,8 +655,6 @@ if (typeof MINIFIED === 'undefined'){
             this.killed                         = true;
 
             this.rewind();
-
-            this.publish('Turbine|workflow|killed',{ isInternalTurbineMsg : true });
         },
 
         /**
@@ -704,6 +695,7 @@ if (typeof MINIFIED === 'undefined'){
                 return null;
             }
 
+            this.currentQuery                   = query;
             this.nextQuery                      = null;
             this.responses[query]               = this.getResponse(query);
 
@@ -742,14 +734,6 @@ if (typeof MINIFIED === 'undefined'){
             if (!MINIFIED){
                 this.log('exec', 'Executing the ' + responseName + ' response to the ' + query + ' query', responseObj, 'DEBUG');
             }
-
-            this.publish('Turbine|query|executed',{
-
-                query                           : query,
-                response                        : responseName,
-                responseObj                     : responseObj,
-                isInternalTurbineMsg            : true
-            });
 
             responseObj.responseName            = responseName;
 
@@ -821,18 +805,18 @@ if (typeof MINIFIED === 'undefined'){
                         this.repeat(query,response);
 
                     }
-                    /* "waitFor" tells us to wait for an event (or events) before executing "then" query */
+                    /* "waitFor" tells us to wait for a message (or messages) before executing "then" query */
                     else if (response.waitFor) {
 
-                        this.queue(response.then,response.waitFor);
+                        this.queue(response.waitFor,response.then);
 
                     }
                     /* Otherwise, "then" query gets executed immediately */
                     else if (response.then){
 
-//                        if (this.isEarlierQuery(response.then,query)) {
-//                            this.rewind(query,response.then);
-//                        }
+                        if (this.isEarlierQuery(response.then,this.currentQuery)){
+                            this.rewind(this.currentQuery,response.then);
+                        }
 
                         this.exec(response.then);
                     }
@@ -912,7 +896,7 @@ if (typeof MINIFIED === 'undefined'){
         },
 
         /**
-         * Repeats query on each event until limit is reached, after which the
+         * Repeats query on each message until limit is reached, after which the
          * fallback response is performed. If the limit is null, query can repeat infinitely.
          *
          * @param query The query to repeat
@@ -929,7 +913,7 @@ if (typeof MINIFIED === 'undefined'){
             /* If the limit is null, repeat query indefinitely */
             if (response.repeat.limit === null) {
 
-                this.queue(query,response.waitFor);
+                this.queue(response.waitFor,query);
             }
             /* If the limit has been reached, use fallback response */
             else if (response.repeat.counter >= response.repeat.limit) {
@@ -937,13 +921,6 @@ if (typeof MINIFIED === 'undefined'){
                 if (!MINIFIED){
                     this.log('repeat', 'Maximum repeat limit for ' + query + ' reached or exceeded (' + response.repeat.counter + ' of ' + response.repeat.limit + ' max)');
                 }
-
-                this.publish('Turbine|limit|exceeded|REPEAT',{
-
-                    query                       : query,
-                    limit                       : response.repeat.limit,
-                    isInternalTurbineMsg        : true
-                });
 
                 this.processResponse(query,response.repeat);
             }
@@ -960,7 +937,7 @@ if (typeof MINIFIED === 'undefined'){
                         response.waitFor        = response.waitFor.slice(0,response.waitFor.length - this.numAlwaysWaitFor);
                     }
 
-                    this.queue(query,response.waitFor);
+                    this.queue(response.waitFor,query);
 
                 } else {
 
@@ -989,13 +966,6 @@ if (typeof MINIFIED === 'undefined'){
                 this.log('rewind', 'Rewinding from ' + from + ' to ' + to, null, 'DEBUG');
             }
 
-            this.publish('Turbine|workflow|rewind',{
-
-                from                            : from,
-                to                              : to,
-                isInternalTurbineMsg            : true
-            });
-
             for (var i=numQueries;i>=0;i--) {
 
                 var query                       = this.queryOrder[i];
@@ -1018,26 +988,23 @@ if (typeof MINIFIED === 'undefined'){
          * Checks whether the new query is earlier than the current query
          * (e.g. we're going backwards in the workflow)
          *
-         * @param newQuery The query to execute next
+         * @param nextQuery The query to execute next
          * @param currentQuery The query we're currently executing
          */
-        isEarlierQuery : function(newQuery,currentQuery) {
+        isEarlierQuery : function(nextQuery,currentQuery) {
 
-            if (currentQuery === newQuery) {
-                return true;
+            if (currentQuery === nextQuery) {
+                return false;
             }
 
-            for (var i in this.queryOrder) {
+            for (var i=0;i<this.queryOrder.length;i++) {
 
-                if (this.queryOrder.hasOwnProperty(i)) {
+                if (this.queryOrder[i] === nextQuery) {
+                    return true;
+                }
 
-                    if (this.queryOrder[i] === newQuery) {
-                        return true;
-                    }
-
-                    if (this.queryOrder[i] === currentQuery) {
-                        return false;
-                    }
+                if (this.queryOrder[i] === currentQuery) {
+                    return false;
                 }
             }
 
@@ -1085,23 +1052,33 @@ if (typeof MINIFIED === 'undefined'){
          */
         resetResponse : function(query) {
 
-            var didReset                        = false;
+            /* If the query is dirty, just clear the dirty flag. Don't reset the response. */
+            if (this.isDirtyQuery(query)){
 
-            if (typeof this.resets[query] === 'function'){
+                this.dirtyQueries[query]        = null;
 
-                this.responses[query]           = this.resets[query]();
-                didReset                        = true;
-
-            } else if (typeof this.resets[query] !== 'undefined'){
-
-                this.responses[query]           = this.resets[query];
-                didReset                        = true;
             }
+            /* If the query isn't dirty, reset the response */
+            else {
 
-            if (!MINIFIED){
+                var didReset                    = false;
 
-                if (didReset){
-                    this.log('resetResponse', 'Reset ' + query + ' response to', this.responses[query] || 'false', 'TRACE');
+                if (typeof this.resets[query] === 'function'){
+
+                    this.responses[query]       = this.resets[query]();
+                    didReset                    = true;
+
+                } else if (typeof this.resets[query] !== 'undefined'){
+
+                    this.responses[query]       = this.resets[query];
+                    didReset                    = true;
+                }
+
+                if (!MINIFIED){
+
+                    if (didReset){
+                        this.log('resetResponse', 'Reset ' + query + ' response to', this.responses[query] || 'false', 'DEBUG');
+                    }
                 }
             }
         },
@@ -1121,14 +1098,6 @@ if (typeof MINIFIED === 'undefined'){
             if (this.waitingFor) {
                 this.remove(this.waitingFor);
             }
-
-            this.publish('Turbine|timer|expired|WORKFLOW_RESPONSE_TIMEOUT',{
-
-                query                           : query,
-                response                        : response.responseName,
-                responseObj                     : response,
-                isInternalTurbineMsg            : true
-            });
 
             /* Set flag so timeout isn't triggered again during reprocessing */
             response.timeout.isAfterTimeout     = true;
@@ -1237,13 +1206,6 @@ if (typeof MINIFIED === 'undefined'){
                 this.log('startDelayTimeout',query + ' delay started. Delayed for ' + response.delay.for + ' ms', response);
             }
 
-            this.publish('Turbine|delay|started',{
-
-                query                           : query,
-                delay                           : response.delay.for + ' ms',
-                isInternalTurbineMsg            : true
-            });
-
             var self                            = this;
 
             this.timers.delay = setTimeout(function() {
@@ -1265,13 +1227,6 @@ if (typeof MINIFIED === 'undefined'){
                 this.log('onDelayTimeout',query + ' delay completed after ' + response.delay.for + ' ms', response);
             }
 
-            this.publish('Turbine|delay|completed',{
-
-                query                           : query,
-                delay                           : response.delay.for + ' ms',
-                isInternalTurbineMsg            : true
-            });
-
             this.processResponse(query,response.delay);
         },
 
@@ -1289,12 +1244,12 @@ if (typeof MINIFIED === 'undefined'){
         },
 
         /**
-         * Queues query to be executed on next event
+         * Queues query to be executed on next message
          *
-         * @param nextQuery The query to queue
          * @param waitFor The message(s) to wait for before executing the next query
+         * @param nextQuery The query to queue
          */
-        queue : function(nextQuery,waitFor) {
+        queue : function(waitFor,nextQuery) {
 
             if (this.waitingFor) {
                 this.remove(this.waitingFor);
@@ -1307,13 +1262,6 @@ if (typeof MINIFIED === 'undefined'){
             this.nextQuery                      = nextQuery;
 
             if (this.waitingFor.length > 0){
-
-                this.publish('Turbine|workflow|waiting',{
-
-                    waitingFor                  : this.waitingFor,
-                    isInternalTurbineMsg        : true
-                });
-
                 this.listen(this.waitingFor,this.handleIncomingMessage.bind(this));
             }
 
@@ -1426,14 +1374,11 @@ if (typeof MINIFIED === 'undefined'){
                 this.nextQuery                  = this.getNextQuery(message);
             }
 
-            this.publish('Turbine|message|handled',{
-
-                handledMessage                  : message,
-                next                            : this.nextQuery,
-                isInternalTurbineMsg            : true
-            });
-
             this.waitingFor                     = null;
+
+            if (this.isEarlierQuery(this.nextQuery,this.currentQuery)){
+                this.rewind(this.currentQuery,this.nextQuery);
+            }
 
             if (!this.isKilled()){
                 this.next();
@@ -1624,14 +1569,6 @@ if (typeof MINIFIED === 'undefined'){
                 this.log('onGlobalTimeout', 'Turbine timed out on ' + query + ' query after ' + this.getGlobalTimeout() + ' ms',null,'ERROR');
             }
 
-            this.publish('Turbine|timer|expired|WORKFLOW_GLOBAL_TIMEOUT', {
-
-                query                           : query,
-                response                        : response.responseName,
-                responseObj                     : response,
-                isInternalTurbineMsg            : true
-            });
-
             /* Set flag so timeout isn't triggered again during reprocessing */
             this.always.timeout.isAfterTimeout  = true;
 
@@ -1691,6 +1628,17 @@ if (typeof MINIFIED === 'undefined'){
         },
 
         /**
+         * Checks whether a query is "dirty": its response has been set
+         * via setResponse() while waiting for a message.
+         *
+         * @param query The query to check
+         * @returns {boolean}
+         */
+        isDirtyQuery : function(query){
+            return this.dirtyQueries[query] === true;
+        },
+
+        /**
          * Sets response to query
          *
          * @param query The query for which to set the response
@@ -1703,6 +1651,7 @@ if (typeof MINIFIED === 'undefined'){
             }
 
             this.responses[query]               = response;
+            this.dirtyQueries[query]            = true;
         },
 
         /**
@@ -1715,7 +1664,7 @@ if (typeof MINIFIED === 'undefined'){
             this.responses[query]               = (this.hasQueryFunction(query)) ? this.queries[query]() : this.responses[query];
 
             /* Convert boolean result to yes/no string */
-            if (typeof this.responses[query] === 'boolean' || this.responses[query] === null) {
+            if (typeof this.responses[query] === 'boolean' || this.responses[query] === null || typeof this.responses[query] === 'undefined') {
                 this.responses[query]           = (this.responses[query]) ? 'yes' : 'no';
             }
 
