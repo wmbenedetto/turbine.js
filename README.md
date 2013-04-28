@@ -1258,13 +1258,9 @@ isAgeGateRequired : {
         },
         waitFor : [
             {
-                message : 'App.button.clicked.YES',
+                message : ['App.button.clicked.YES','App.button.clicked.NO'],
                 then : 'isOldEnough'
-            },
-            {
-                message : 'App.button.clicked.NO',
-                then : 'isOldEnough'
-            },
+            }
             {
                 message : 'App.button.clicked.HELP',
                 then : 'isHelpLoaded'
@@ -1309,11 +1305,7 @@ isAgeGateRequired : {
         },
         waitFor : [
             {
-                message : 'App.button.clicked.YES',
-                then : 'isOldEnough'
-            },
-            {
-                message : 'App.button.clicked.NO',
+                message : ['App.button.clicked.YES','App.button.clicked.NO'],
                 then : 'isOldEnough'
             },
             {
@@ -1360,7 +1352,9 @@ isAgeGateRequired : {
 }
 ```
 
-In the example above, the `App.button.clicked.YES` and `App.button.clicked.NO` will execute `isOldEnough` next, whereas `App.button.clicked.HELP` will execute `isHelpLoaded`.
+In the example above, the `App.button.clicked.YES` and `App.button.clicked.NO` will execute `isOldEnough` next, whereas `App.button.clicked.HELP` will execute `isHelpLoaded`. 
+
+While this approach technically will work, it is not recommended -- if you're using multiple `then` options, then each `waitFor` message really should have its own `then`, for clarity's sake.
 
 #### repeat
 
