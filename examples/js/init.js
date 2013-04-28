@@ -1,7 +1,7 @@
 var cartInit = {
 
     name                                        : 'CartExample',
-    logLevel                                    : 'TRACE',
+    logLevel                                    : 'DEBUG',
 
     queries : {
 
@@ -27,81 +27,73 @@ var cartInit = {
         isCheckoutStarted                       : false
     },
 
-    workflow : {
+    shortcuts : {
+        start                                   : 'isCartStarted'
+    },
 
-         config : {
+    variables : {
+        specialOfferDiscount                    : 10,
+        signupOfferPoints                       : 100
+    },
 
-            shortcuts : {
-                start                           : 'isCartStarted'
+    always : {
+
+        timeout : {
+            after                               : 300000,
+            publish : {
+                message                         : "CartExample|issue|detected|WORKFLOW_GLOBAL_TIMEOUT"
             },
+            then                                : "stop."
+        },
 
-            variables : {
-                specialOfferDiscount            : 10,
-                signupOfferPoints               : 100
+        waitFor : {
+            message                             : 'Cart|checkout|started',
+            then                                : 'isCheckoutStarted'
+        }
+    },
+
+    mixins : {
+
+        isCartEmpty : {
+            yes : {
+                publish                         : '+EMPTY_CART',
+                then                            : '@start'
             },
-
-            always : {
-
-                timeout : {
-                    after                       : 300000,
+            no : {
+                delay : {
+                    for                         : 2500,
                     publish : {
-                        message                 : "CartExample|issue|detected|WORKFLOW_GLOBAL_TIMEOUT"
+                        message                 : 'CartExample|checkout|completed',
+                        using : {
+                            content             : 'success'
+                        }
                     },
-                    then                        : "stop."
-                },
-
-                waitFor : [
-                    {
-                        waitFor                 : 'Cart|checkout|started',
-                        then                    : 'isCheckoutStarted'
-                    }
-                ]
+                    then                        : '@start'
+                }
             }
         },
 
-        /**
-         * Queries are typically defined here. However, in this example, we're showing
-         * how to toggle between two different query sets. Therefore, the queries are
-         * contained in a separate object below. Which query set we'll use is defined
-         * at runtime in app.init();
-         */
-        queries : null,
+        APPLIED_DISCOUNT : {
+            handle                              : 'APPLIED_DISCOUNT',
+            description                         : '$specialOfferDiscount% discount applied',
+            discount                            : '$specialOfferDiscount'
+        },
 
-        mixins : {
-
-            isCartEmpty : {
-                yes : {
-                    publish                     : '+EMPTY_CART',
-                    then                        : '@start'
-                },
-                no : {
-                    delay : {
-                        for                     : 2500,
-                        publish : {
-                            message             : 'CartExample|checkout|completed',
-                            using : {
-                                content         : 'success'
-                            }
-                        },
-                        then                    : '@start'
-                    }
-                }
-            },
-
-            APPLIED_DISCOUNT : {
-                handle                          : 'APPLIED_DISCOUNT',
-                description                     : '$specialOfferDiscount% discount applied',
-                discount                        : '$specialOfferDiscount'
-            },
-
-            EMPTY_CART : {
-                message                         : 'CartExample|issue|detected',
-                using : {
-                    content                     : 'emptyCart'
-                }
+        EMPTY_CART : {
+            message                             : 'CartExample|issue|detected',
+            using : {
+                content                         : 'emptyCart'
             }
         }
-    }
+    },
+
+    /**
+     * Queries are typically defined here. However, in this example, we're showing
+     * how to toggle between two different query sets. Therefore, the queries are
+     * contained in a separate object below. Which query set we'll use is defined
+     * at runtime in app.init();
+     */
+    workflow : null
 };
 
 var queries = {
@@ -114,8 +106,10 @@ var queries = {
 
         isCartStarted : {
             yes : {
-                waitFor                         : 'Cart|item|added',
-                then                            : 'isLoggedIn'
+                waitFor : {
+                    message                     : 'Cart|item|added',
+                    then                        : 'isLoggedIn'
+                }
             },
             no : {
                 then                            : 'stop.'
@@ -176,7 +170,7 @@ var queries = {
                     }
                 },
                 report                          : '+APPLIED_DISCOUNT',
-                then                            : 'isCheckoutStarted'
+                then                            : '@start'
             },
             no : {
                 "then"                          : "@start"
@@ -305,10 +299,6 @@ var signupInit = {
     name                                        : 'SignupExample',
     logLevel                                    : 'DEBUG',
 
-    queries : {
-
-    },
-
     resets : {
         isSignupStarted                         : true
     },
@@ -317,94 +307,91 @@ var signupInit = {
         isSignupStarted                         : true
     },
 
+    mixins : {
+
+        advanceToStep3 : {
+            publish : {
+                message                         : 'SignupExample|step|advance|3'
+            },
+            then                                : 'stop.'
+        }
+    },
+
     workflow : {
 
-        queries : {
-
-            isSignupStarted : {
-                yes : {
-                    waitFor                     : 'Signup|gender|selected',
-                    then                        : 'whichGender'
-                },
-                no : {
-                    then                        : 'stop.'
-                }
+        isSignupStarted : {
+            yes : {
+                waitFor                         : 'Signup|gender|selected',
+                then                            : 'whichGender'
             },
-
-            whichGender : {
-                male : {
-                    publish : {
-                        message                 : 'SignupExample|step|advance|2',
-                        using : {
-                            thing               : 'sport',
-                            options : [
-                                'Baseball',
-                                'Football',
-                                'Basketball',
-                                'Hockey'
-                            ]
-                        }
-                    },
-                    waitFor                     : 'Signup|favorite|selected',
-                    then                        : 'likes'
-                },
-                female : {
-                    publish : {
-                        message                 : 'SignupExample|step|advance|2',
-                        using : {
-                            thing               : 'animal',
-                            options : [
-                                'Cat',
-                                'Dog',
-                                'Bird',
-                                'Horse'
-                            ]
-                        }
-                    },
-                    waitFor                     : 'Signup|favorite|selected',
-                    then                        : 'likes'
-                },
-                other : {
-                    publish : {
-                        message                 : 'SignupExample|step|advance|2',
-                        using : {
-                            thing               : 'breakfast',
-                            options : [
-                                'Pancakes',
-                                'Bacon',
-                                'Waffles',
-                                'Eggs'
-                            ]
-                        }
-                    },
-                    waitFor                     : 'Signup|favorite|selected',
-                    then                        : 'likes'
-                }
-            },
-
-            likes : {
-                basketball                      : '+advanceToStep3',
-                dog                             : '+advanceToStep3',
-                eggs                            : '+advanceToStep3',
-                default : {
-                    publish : {
-                        message                 : 'SignupExample|signup|completed',
-                        using : {
-                            showThanks          : true
-                        }
-                    },
-                    then                        : 'stop.'
-                }
+            no : {
+                then                            : 'stop.'
             }
         },
 
-        mixins : {
-
-            advanceToStep3 : {
+        whichGender : {
+            male : {
                 publish : {
-                    message                 : 'SignupExample|step|advance|3'
+                    message                     : 'SignupExample|step|advance|2',
+                    using : {
+                        thing                   : 'sport',
+                        options : [
+                            'Baseball',
+                            'Football',
+                            'Basketball',
+                            'Hockey'
+                        ]
+                    }
                 },
-                then                        : 'stop.'
+                waitFor                         : 'Signup|favorite|selected',
+                then                            : 'likes'
+            },
+            female : {
+                publish : {
+                    message                     : 'SignupExample|step|advance|2',
+                    using : {
+                        thing                   : 'animal',
+                        options : [
+                            'Cat',
+                            'Dog',
+                            'Bird',
+                            'Horse'
+                        ]
+                    }
+                },
+                waitFor                         : 'Signup|favorite|selected',
+                then                            : 'likes'
+            },
+            other : {
+                publish : {
+                    message                     : 'SignupExample|step|advance|2',
+                    using : {
+                        thing                   : 'breakfast',
+                        options : [
+                            'Pancakes',
+                            'Bacon',
+                            'Waffles',
+                            'Eggs'
+                        ]
+                    }
+                },
+                waitFor                         : 'Signup|favorite|selected',
+                then                            : 'likes'
+            }
+        },
+
+        likes : {
+            basketball                          : '+advanceToStep3',
+            dog                                 : '+advanceToStep3',
+            eggs                                : '+advanceToStep3',
+            default : {
+                publish : {
+                    message                     : 'SignupExample|signup|completed',
+                    using : {
+                        showThanks              : true
+                    }
+                },
+                then                            : 'stop.'
             }
         }
     }
