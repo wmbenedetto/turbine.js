@@ -1,9 +1,3 @@
-### NOTE: Docs in progress
-
-In the meantime, see /examples (particularly /examples/js/init.js) for working examples
-
----
-
 # Turbine
 
 Turbine is a JavaScript workflow engine. It vastly simplifies the development, deployment, and testing of complex web applications through the use of declarative workflows that express your app's program logic in a form that is simple to read and to understand.
