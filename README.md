@@ -22,6 +22,28 @@ The end result is code which is dense, brittle, untestable, obtuse, and just pla
 
 Turbine was written to solve these problems by taking the program logic of complex apps and abstracting it out into a simple document (the *workflow*) which is easy to read and understand. 
 
+## Quick install
+
+Turbine is available via a number of popular package managers:
+
+### NPM
+
+```
+npm install turbine.js
+```
+
+### JamJS
+```
+jam install turbine.js
+```
+
+### Bower
+```
+bower install turbine.js
+```
+
+Or you can download the latest tag from https://github.com/wmbenedetto/turbine.js/tags
+
 ## Key concepts
 
 In order to use Turbine, it's important to first define some key concepts. Once we have a common vocabulary and general conceptual understanding established, we can then begin talking about how you can use Turbine to power your app.
