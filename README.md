@@ -6,26 +6,27 @@ In the meantime, see /examples (particularly /examples/js/init.js) for working e
 
 # Turbine
 
+Turbine is a JavaScript workflow engine. It vastly simplifies the development, deployment, and testing of complex web applications through the use of declarative workflows that express your app's program logic in a form that is simple to read and to understand.
+
 ## Why Turbine?
 
-## Core principles
+Turbine is the ideal solution for apps (or parts of apps) with multi-step processes involving many possible branches, sub-flows, or permutations. Examples include:
 
-### Declarative
-### Expressive
-### Event-driven
-### Decoupled
-### Modular
-### Reusable
+* Signup forms
+* Login forms
+* Interactive tours
+* Shopping carts
+* Checkout flows
+* Asset creation (i.e. upload photo -> add filter -> add caption -> tag friends -> share)
+* etc.
 
-## Advantages
+The programming of these types of apps usually involves a tangled nightmare of conditionals, switches, callbacks, promises, and other strands of spaghetti code. 
 
-## Basic features
+This tightly coupled code makes it almost impossible to A/B/n test different flows or variations -- any attempt to do so usually makes the problem even worse. It is also very difficult to follow the program logic to trace all the possible flows through the code.
 
-## Advanced features
+The end result is code which is dense, brittle, untestable, obtuse, and just plain gross.
 
-## Quick install
-
-## Quick start
+Turbine was written to solve these problems by taking the program logic of complex apps and abstracting it out into a simple document (the *workflow*) which is easy to read and understand. 
 
 ## Key concepts
 
@@ -34,6 +35,8 @@ In order to use Turbine, it's important to first define some key concepts. Once 
 ### Workflow
 
 The workflow is the jet fuel that powers Turbine. It's an expressive, declarative syntax for defining the program flow of your application. It allows you to define all the logical branching of your app in a single document, in a format that is both human- and machine-readable. 
+
+Turbine workflows are declarative -- they are only concerned with *what* your app does, not *how* it does it. Although workflows are written in JavaScript, they should not contain any functional logic. They should be serializable to JSON -- and deserializable from JSON --  without any ill effects.
 
 A workflow is essentially a series of questions (queries) and answers (responses). It's almost like a conversation between Turbine and your app.
 
