@@ -1525,26 +1525,144 @@ isUploadComplete : {
 
 Now `APP_UPLOAD_FAILURE` will be sent to your reporting system so you can investigate why it failed.
 
-## Examples
-
 ## API
+
+The Turbine API is extremely simple -- most of the logic and complexity is implemented in the workflow itself. There are just a few methods available:
 
 ---
 ### start()
+
+Once an instance of Turbine has been created, calling `start()` will actually start the workflow.
+
+```javascript
+var turbine = new Turbine(initObj);
+turbine.start();
+```
+
+You can also chain `start()` directly to the new Turbine instance, if you want it to start right away:
+
+```javascript
+var turbine = new Turbine(initObj).start();
+```
+
 ---
 ### isStarted()
+
+If you want to know whether Turbine has been started, you can use `isStarted()`.
+
+```javascript
+var turbine = new Turbine(initObj);
+turbine.isStarted(); // returns false
+turbine.start();
+turbine.isStarted(); // returns true
+```
+
 ---
 ### stop()
+
+To stop Turbine, simple call stop().
+
+```javascript
+var turbine = new Turbine(initObj);
+turbine.isStarted(); // returns false
+turbine.start();
+turbine.isStarted(); // returns true
+turbine.stop();
+turbine.isStarted(); // returns false
+```
+
 ---
 ### getVar(varName)
+
+The `getVar()` method retrieves the value of the variable set in Turbine's init object.
+
+* `varName` *[String] The name of the variable to retrieve* 
+
+```javascript
+var initObj = {
+    variables : {
+        maxRetries : 100
+    }
+};
+
+var turbine = new Turbine(initObj);
+turbine.getVar('maxRetries'); // returns 100
+```
+
 ---
 ### setResponse(query, response)
----
+
+The `setResponse` method sets the response to a query.
+
+* `query` *[String] The query to set the response for* 
+* `response` *[String or Number or Boolean] The response to the query* 
+
+```javascript
+var turbine = new Turbine(initObj);
+turbine.setResponse('isLoggedIn',true);
+```
+
+## Examples
+
+Inside the /examples directory, you'll find a sample app that uses most of the concepts described in these docs. 
+
+Just open /examples/index.html in a browser, select which type of workflow you want to load, then click Start Turbine. 
+
+The app has a simple list of products, along with a mock shopping cart. You can add and remove items in the cart, do a simulated login and signup, and execute a mock checkout.
+
+Some things to try: 
+
+### When login is required before adding an item to the cart
+
+* Try adding an item without logging in. You'll be prompted to log in. Click the Log In button, then try adding the item again. You'll be able to add it now.
+* If you try adding an item 3 times without logging in, you'll be forced to sign up.
+* If you add a PlayStation and NBA 2K13, you'll get a discount.
+* If, during signup, you select Male and Basketball, you'll get bonus SuperShopper points.
+
+### When login is required before checkout
+* You can add items to the cart immediately
+* If you add a PlayStation and wait a few seconds, you'll be prompted to add a DualShock controller.
+* If you add a DualShock, you'll be prompted to add a charging station.
+* If you try to check out without logging in, you'll be prompted to log in first.
+
+To see how this all fits together as workflows, check out /examples/js/init.js. There you'll find the initObj that sets up the workflows.
+
+**IMPORTANT NOTE:** This example app is meant to show how to implement Turbine and its workflows. It is *not* a good example of how to actually write a web app. There's some kludgy code, there's HTML commingled in the JavaScript, etc. It's pretty gross.
 
 ## FAQ
 
-### Chaining/nesting workflows?
-### Using bind?
+### Can I chain or nest multiple workflows together?
+
+Sure. As a matter of fact, the signup flow in the example app is a separate workflow from the shopping cart flow. Take a look.
+
+First, instantiate an instance of Turbine and start it up. When you get to the part of the workflow where you want to kick off another workflow, publish a message that tells your app to start the other workflow, then wait for a message that lets you know when the other workflow is done.
+
+For example, your first workflow might have:
+
+```javascript
+isSignupRequired : {
+    yes : {
+        publish : {
+            message : 'App.signup.start'
+        },
+        waitFor : 'App.signup.complete',
+        then : 'isSignupValid'
+    },
+    no : {
+        // let them in
+    }
+}
+isSignupValid : {
+    yes : {
+        // let them in
+    },
+    no : {
+        // don't let them in
+    }
+}
+```
+
+Your app can listen for `App.signup.start`. When it receives that message, it creates a new Turbine instance for the signup workflow. When that workflow is complete, it publishes `App.signup.complete`. Since the first workflow is waiting for that message, it will execute the `isSignupValid` query. *Voila!* Nested workflows!
 
 ## Questions? Bugs? Suggestions?
 
