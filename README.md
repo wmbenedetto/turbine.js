@@ -741,25 +741,9 @@ timeout : {
 ```
 
 #### waitFor
-The `waitFor` property is an array of objects defining messages for which to listen, as well as an optional `then` that tells the workflow where to go when the message is received. Whenever your app is waiting for messages, these global `waitFor` messages will be listened for as well.
+The `waitFor` property defines messages for which to listen, as well as an optional `then` that tells the workflow where to go when a message is received. Whenever your app is waiting for messages, these global `waitFor` messages will be listened for as well.
 
-```javascript
-waitFor : [
-    {
-        waitFor : 'Cart.issue.detected.FATAL_ERROR',
-        then    : 'whichFatalError'
-    },
-    {
-        waitFor : [
-            'Cart.issue.detected.MINOR_WARNING',
-            'Cart.issue.detected.SEVERE_WARNING'
-        ],
-        then      : 'whichWarning'
-    }
-]
-```
-
-If one of the global `waitFor` messages is received, its `then` value is processed in lieu of the `then` defined in the workflow. In other words, the global waitFor's `then` overrides the query response's `then`. This allows you to re-route your workflow whenever certain critical messages are received.
+The format of the `waitFor` property is the same as when `waitFor` is defined in a response (see docs below).
 
 #### using
 
@@ -964,7 +948,7 @@ To get the response to the query, Turbine checks a few things:
 
 ### Responses
 
-Responses can be boolean, strings, or numbers. If a response is boolean, true is converted to "yes" and false (or null) is converted to "no".
+Responses can be boolean, strings, or numbers. If a response is boolean, true is converted to "yes" and false is converted to "no". In addition, null and undefined responses are also converted to "no".
 
 A query's responses work similiarly to a JavaScript switch/case statement. If the value of the query's response matches any of the responses in the workflow, that response is processed.
 
@@ -1034,11 +1018,13 @@ Turbine's expressive workflow syntax makes it simple to see how the program will
 * Is the user logged in? No. Does an account exist? Yes. Then ask the user to log in.
 * And so on ...
 
-*Because `then` tells your workflow where to go next, it is required for every response body.* 
+##### `then` is always required (except when it's not)
 
-If you leave it out, your app will basically freeze -- Turbine will get to the response that has no `then` in the response body, and it won't know where to go from there. Instead, it will just throw an exception.
+Because `then` tells your workflow where to go next, it is required for every response body.
 
 (There's a slight caveat to that rule when using the `repeat` or `delay` property -- more on that later.)
+
+If you leave `then` out, your app will basically freeze -- Turbine will get to the response that has no `then` in the response body, and it won't know where to go from there. Instead, it will throw an exception.
 
 ##### Special values : `stop.` and `kill!`
 
@@ -1048,7 +1034,7 @@ Setting `then` to `stop.` tells Turbine to stop. There are no ill effects -- you
 
 Setting `then` to `kill!` not only tells Turbine to stop, but it also prevents it from being started again. If you call `start()` after using `kill!`, Turbine will simply report an error.
 
-*Note that both `stop.` and `kill!` include punctuation -- that is required in order for Turbine to recognize them as special values.*
+*Note that both `stop.` and `kill!` include punctuation -- that's required in order for Turbine to recognize them as special values.*
 
 Continuing to flesh out the example above, we can add `stop.` to `isUserOver18.no`:
 
@@ -1163,7 +1149,7 @@ But what about in the `doesAccountExist` query? We want the user to either log i
 
 We need a way for the app to tell Turbine that it is done doing whatever it needed to do. For that, we use `waitFor`.
 
-The `waitFor` property accepts either a message or array of messages for which Turbine should listen. Once Turbine receives a message it was waiting for, it continues where it left off, going wherever the `then` property tells it to go.
+The `waitFor` property accepts either a message or array of messages for which Turbine should listen. Once Turbine receives a message it's waiting for, it continues where it left off, going wherever the `then` property tells it to go.
 
 Let's add some `waitFor` and `then` properties to the `doesAccountExist` response bodies. We'll also need to add two new queries: `isLoginValid` and `isAccountValid`:
 
@@ -1250,6 +1236,131 @@ isAccountValid : {
 ```
 
 Let's assume our user has an account, so we showed him a login form. When that form is submitted, your app publishes a `App.login.submitted` message. Since Turbine is waiting for that message, it follows then `then` property to `isLoginValid`.
+
+##### Multiple `then` options
+
+Sometimes you might want your app to execute a different query depending on which `waitFor` message it receives. To do this, you can specify `waitFor` as an object or array of objects containing two properties:
+
+* `message` *[String or Array] The message to wait for, or an array of messages to wait for*
+* `then` *[String] Query to execute when one of the messages is received*
+
+For example:
+
+```javascript
+isAgeGateRequired : {
+    yes : {
+        publish : {
+            message : 'App.view.show',
+            using : {
+                view : 'ageGate',
+                content : 'Are you over 18?'
+            }
+        },
+        waitFor : [
+            {
+                message : 'App.button.clicked.YES',
+                then : 'isOldEnough'
+            },
+            {
+                message : 'App.button.clicked.NO',
+                then : 'isOldEnough'
+            },
+            {
+                message : 'App.button.clicked.HELP',
+                then : 'isHelpLoaded'
+            }
+        ]
+    },
+    no : {
+        // do stuff
+    }
+},
+
+isOldEnough : {
+    yes : {
+        // let them in
+    },
+    no : {
+        // don't let them in
+    }
+}
+
+isHelpLoaded : {
+    yes : {
+        // show Help
+    },
+    no : {
+        // load Help
+    }
+}
+```
+
+If you specify a `then` to accompany a `waitFor` message, it will **override** any `then` that is specified outside `waitFor`. 
+
+```javascript
+isAgeGateRequired : {
+    yes : {
+        publish : {
+            message : 'App.view.show',
+            using : {
+                view : 'ageGate',
+                content : 'Are you over 18?'
+            }
+        },
+        waitFor : [
+            {
+                message : 'App.button.clicked.YES',
+                then : 'isOldEnough'
+            },
+            {
+                message : 'App.button.clicked.NO',
+                then : 'isOldEnough'
+            },
+            {
+                message : 'App.button.clicked.HELP',
+                then : 'isHelpLoaded'
+            }
+        ],
+        then : 'isLoggedIn' 
+    },
+    no : {
+        // do stuff
+    }
+}
+```
+
+In the example above, `isLoggedIn` will never be executed, because each `waitFor` message has its own `then` property.
+
+However, if you don't specify a `then` to accompany a `waitFor` message, the `then` that is specified outside `waitFor` will be used. 
+
+```javascript
+isAgeGateRequired : {
+    yes : {
+        publish : {
+            message : 'App.view.show',
+            using : {
+                view : 'ageGate',
+                content : 'Are you over 18?'
+            }
+        },
+        waitFor : [
+            {
+                message : ['App.button.clicked.YES','App.button.clicked.NO']
+            }
+            {
+                message : 'App.button.clicked.HELP',
+                then : 'isOldEnough'
+            }
+        ],
+        then : 'isLoggedIn' 
+    },
+    no : {
+        // do stuff
+    }
+}
+```
+
+In the example above, the `App.button.clicked.YES` and `App.button.clicked.NO` will execute `isLoggedIn` next, whereas `App.button.clicked.HELP` will execute `isOldEnough`.
 
 #### repeat
 
