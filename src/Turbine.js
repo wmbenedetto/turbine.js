@@ -2,7 +2,6 @@
 if (typeof MINIFIED === 'undefined'){
     MINIFIED = false;
 }
-
 /**
  *   ________  ______  ____  _____   ________     _______
  *  /_  __/ / / / __ \/ __ )/  _/ | / / ____/    / / ___/
@@ -65,14 +64,33 @@ if (typeof MINIFIED === 'undefined'){
     /**
      * Initializes Turbine via initObj object.
      *
-     * This initObj must define the workflow config, queries, and mixins.
+     * var initObj = {
      *
-     * The initObj can also optionally define functions for publish(),
+     *     // REQUIRED
+     *     workflow    : {},
+     *
+     *     // OPTIONAL
+     *     name        : '',
+     *     logLevel    : '',
+     *     queries     : {},
+     *     responses   : {},
+     *     resets      : {},
+     *     init        : function(){},
+     *     log         : function(){},
+     *     publish     : function(){},
+     *     listen      : function(){},
+     *     remove      : function(){},
+     *     report      : function(){}
+     * };
+     *
+     * The initObj must define the workflow.
+     *
+     * It can also optionally define functions for publish(),
      * listen(), and remove(). If these aren't defined, jQuery's
      * trigger/bind/unbind will be used by default.
      *
      * The initObj can also define query and reset functions; default responses;
-     * function definitions for log(), compare(), and report(); the name of this
+     * function definitions for init(), log(), and report(); the name of this
      * Turbine instance (used for logging); and the logLevel.
      *
      * @param initObj Initialization object
@@ -91,17 +109,35 @@ if (typeof MINIFIED === 'undefined'){
             throw new Error(errorMsg);
         }
 
-        this.globalListeners                    = {};
+        if (!MINIFIED){
+
+            this.logLevels = {
+                OFF                             : 0,
+                ERROR                           : 1,
+                WARN                            : 2,
+                INFO                            : 3,
+                DEBUG                           : 4,
+                TRACE                           : 5
+            };
+        }
+
+        this.always                             = {};
+        this.alwaysWaitFor                      = {};
+        this.currentQuery                       = null;
+        this.dirtyQueries                       = {};
         this.globalTimeoutAllowed               = false;
         this.logLevel                           = initObj.logLevel  || 'ERROR';
         this.name                               = initObj.name      || 'Turbine';
+        this.mixins                             = {};
         this.numGlobalListeners                 = 0;
         this.queries                            = {};
         this.queryOrder                         = [];
         this.resets                             = {};
         this.responses                          = {};
+        this.shortcuts                          = {};
         this.started                            = false;
         this.killed                             = false;
+        this.variables                          = {};
         this.waitingFor                         = null;
         this.workflow                           = {};
 
@@ -111,41 +147,50 @@ if (typeof MINIFIED === 'undefined'){
             global                              : null
         };
 
-        if (typeof initObj.init === 'function'){
-            initObj.init();
-        }
-
+        this.initPubSub();
         this.importFunctions(initObj);
         this.importObjects(initObj);
+        this.importAlways();
+        this.importMixins();
         this.importWorkflow(initObj);
+
+        if (typeof initObj.init === 'function'){
+            initObj.init(this);
+        }
     };
 
+    /**
+     * Turbine class prototype
+     */
     Turbine.prototype = {
 
-        defaultGlobalTimeout                    : 3600000, // one hour, in milliseconds
-        globalListeners                         : null,
-        globalTimeoutAllowed                    : null,
-        init                                    : null,
-        logLevel                                : null,
-        name                                    : null,
-        numGlobalListeners                      : null,
-        queries                                 : null,
-        queryOrder                              : null,
-        resets                                  : null,
-        responses                               : null,
-        started                                 : null,
-        killed                                  : null,
-        timers                                  : null,
-        waitingFor                              : null,
-        workflow                                : null,
+        DEFAULT_GLOBAL_TIMEOUT                  : 3600000, // one hour, in milliseconds
 
-        logLevels : {
-            OFF                                 : 0,
-            ERROR                               : 1,
-            WARN                                : 2,
-            INFO                                : 3,
-            DEBUG                               : 4,
-            TRACE                               : 5
+        /**
+         * Initializes default publish/listen/remove functions.
+         * These can be overridden by functions defined the initObj
+         * passed to the Turbine constructor
+         */
+        initPubSub : function(){
+
+            var self                            = this;
+
+            this.pubsub = {
+
+                publish : function(message,payload){
+                    $(self).trigger(message,payload);
+                },
+
+                listen : function(message,handler){
+                    $(self).on(message,function(e) {
+                        handler(e.type, e.data);
+                    });
+                },
+
+                remove : function(message){
+                    $(self).unbind(message);
+                }
+            }
         },
 
         /**
@@ -167,8 +212,7 @@ if (typeof MINIFIED === 'undefined'){
                 'publish',
                 'listen',
                 'remove',
-                'report',
-                'compare'
+                'report'
             ];
 
             for (var i=0;i<validFunctions.length;i++) {
@@ -212,7 +256,15 @@ if (typeof MINIFIED === 'undefined'){
             }
 
             var thisObj                         = null;
-            var validObjects                    = ['queries','resets','responses'];
+            var validObjects = [
+                'queries',
+                'resets',
+                'responses',
+                'shortcuts',
+                'variables',
+                'always',
+                'mixins'
+            ];
 
             for (var i=0;i<validObjects.length;i++) {
 
@@ -242,21 +294,10 @@ if (typeof MINIFIED === 'undefined'){
                 }
 
                 this.workflow                       = initObj.workflow || {};
-                this.workflow.config                = initObj.workflow.config || {};
-                this.workflow.config.shortcuts      = initObj.workflow.config.shortcuts || {};
-                this.workflow.config.variables      = initObj.workflow.config.variables || {};
-                this.workflow.config.always         = initObj.workflow.config.always || {};
 
-                if (this.utils.isObjLiteral(initObj.workflow.mixins)) {
-                    this.importMixins(initObj.workflow);
-                    this.replaceMixins(this.workflow.queries,this.workflow.mixins);
-                }
+                this.replaceMixins(this.workflow);
 
-                if (this.utils.isObjLiteral(initObj.workflow.config)) {
-                    this.importConfig(initObj.workflow);
-                }
-
-                if (this.utils.isObjLiteral(initObj.workflow.queries)) {
+                if (this.utils.isObjLiteral(initObj.workflow)) {
                     this.importQueries(initObj.workflow);
                 }
 
@@ -274,59 +315,48 @@ if (typeof MINIFIED === 'undefined'){
         },
 
         /**
-         * Imports mixins, recursively replacing any nested mixins
-         *
-         * @param workflow The workflow object containing the mixins
+         * Imports "always" from initObj
          */
-        importMixins : function(workflow){
+        importAlways : function() {
 
             if (!MINIFIED){
-                this.log('importMixins', 'Importing mixins', workflow.mixins, 'DEBUG');
+                this.log('importAlways', 'Importing always', this.always, 'DEBUG');
             }
 
-            var mixins                          = workflow.mixins || {};
+            if (typeof this.always.waitFor !== 'undefined'){
 
-            for (var mixin in mixins){
+                this.replaceShortcuts(this.always.waitFor);
+                this.replaceVariables(this.always.waitFor);
 
-                if (mixins.hasOwnProperty(mixin)){
-                    this.replaceMixins(mixins[mixin],mixins);
+                var result                      = this.parseWaitFor(this.always.waitFor);
+
+                this.alwaysWaitFor              = result.nextQueryObj;
+                this.numAlwaysWaitFor           = result.waitingFor.length;
+
+                if (!MINIFIED){
+                    this.log('importAlways', 'Always wait for', this.alwaysWaitFor, 'DEBUG');
                 }
             }
 
-            this.workflow.mixins                = mixins;
+            /* If a global timeout is specified then global timeouts are allowed by default */
+            this.globalTimeoutAllowed           = typeof this.always.timeout !== 'undefined';
         },
 
         /**
-         * Imports workflow config
-         *
-         * @param workflow The workflow object containing the config
+         * Imports mixins, recursively replacing any nested mixins
          */
-        importConfig : function(workflow) {
+        importMixins : function(){
 
             if (!MINIFIED){
-                this.log('importConfig', 'Importing config', workflow.config, 'DEBUG');
+                this.log('importMixins', 'Importing mixins', this.mixins, 'DEBUG');
             }
 
-            var self                            = this;
+            for (var mixin in this.mixins){
 
-            if (workflow.config.always && workflow.config.always.waitFor) {
-
-                for (var i in workflow.config.always.waitFor) {
-
-                    if (workflow.config.always.waitFor.hasOwnProperty(i)) {
-
-                        (function(listener) {
-
-                            self.importGlobalListener(listener,workflow);
-
-                        }(workflow.config.always.waitFor[i]));
-                    }
+                if (this.mixins.hasOwnProperty(mixin)){
+                    this.replaceMixins(this.mixins[mixin]);
                 }
             }
-
-            /* If a global timeout is specified in the workflow config, then
-             * global timeouts are allowed by default */
-            this.globalTimeoutAllowed           = typeof workflow.config.always.timeout !== 'undefined';
         },
 
         /**
@@ -337,15 +367,15 @@ if (typeof MINIFIED === 'undefined'){
         importQueries : function(workflow) {
 
             if (!MINIFIED){
-                this.log('importQueries', 'Importing queries', workflow.queries, 'DEBUG');
+                this.log('importQueries', 'Importing queries', workflow, 'DEBUG');
             }
 
             var totalQueries                    = 0;
 
             /* Imports each query in the workflow */
-            for (var query in workflow.queries) {
+            for (var query in workflow) {
 
-                if (workflow.queries.hasOwnProperty(query)) {
+                if (workflow.hasOwnProperty(query)) {
 
                     this.importQuery(query,workflow);
 
@@ -375,7 +405,7 @@ if (typeof MINIFIED === 'undefined'){
         importQuery : function(query,workflow) {
 
             if (!MINIFIED){
-                this.log('importQuery', 'Importing workflow query: ' + query, workflow.queries[query], 'TRACE');
+                this.log('importQuery', 'Importing workflow query: ' + query, workflow[query], 'TRACE');
             }
 
             this.queries[query]                 = this.queries[query] || null;
@@ -383,11 +413,11 @@ if (typeof MINIFIED === 'undefined'){
             /* Store queries in array so they can be accessed numerically */
             this.queryOrder.push(query);
 
-            this.replaceMixins(query,workflow);
+            this.replaceMixins(query);
 
-            for (var response in workflow.queries[query]) {
+            for (var response in workflow[query]) {
 
-                if (workflow.queries[query].hasOwnProperty(response)) {
+                if (workflow[query].hasOwnProperty(response)) {
                     this.importResponse(response,query,workflow);
                 }
             }
@@ -402,7 +432,7 @@ if (typeof MINIFIED === 'undefined'){
          */
         importResponse : function(response,query,workflow) {
 
-            var thisResponse                    = workflow.queries[query][response];
+            var thisResponse                    = workflow[query][response];
 
             if (!MINIFIED){
                 this.log('importResponse', 'Importing ' + response + ' response to ' + query + ' query', thisResponse, 'TRACE');
@@ -413,8 +443,8 @@ if (typeof MINIFIED === 'undefined'){
                 thisResponse.repeat.counter = 0;
             }
 
-            this.replaceShortcuts(thisResponse,workflow);
-            this.replaceVariables(thisResponse,workflow);
+            this.replaceShortcuts(thisResponse);
+            this.replaceVariables(thisResponse);
         },
 
         /**
@@ -509,11 +539,7 @@ if (typeof MINIFIED === 'undefined'){
             payload                             = payload || {};
 
             if (!MINIFIED){
-
-                /* Only log internal Turbine messages if log level is TRACE */
-                var logLevel                    = (payload.isInternalTurbineMsg) ? 'TRACE' : 'INFO';
-
-                this.log('publish', 'Publishing message:', message, logLevel);
+                this.log('publish', 'Publishing message:', message);
             }
 
             if (typeof message === 'string') {
@@ -521,7 +547,7 @@ if (typeof MINIFIED === 'undefined'){
             }
 
             for (var i=0;i<message.length;i++) {
-                $(this).trigger(message[i],payload);
+                this.pubsub.publish(message[i],payload);
             }
 
             if (typeof callback === 'function') {
@@ -550,10 +576,7 @@ if (typeof MINIFIED === 'undefined'){
             }
 
             for (var i=0;i<message.length;i++) {
-
-                $(this).on(message[i],function(e) {
-                    handler(e.type, e.data);
-                });
+                this.pubsub.listen(message[i],handler);
             }
         },
 
@@ -577,23 +600,8 @@ if (typeof MINIFIED === 'undefined'){
             }
 
             for (var i=0;i<message.length;i++) {
-                 $(this).unbind(message[i]);
+                 this.pubsub.remove(message[i]);
             }
-        },
-
-        /**
-         * Default implementation of compare() method. Used to compare two messages to each
-         * other, to determine if they match.
-         *
-         * This can be overridden by defining a compare() method in the initObj passed to
-         * the constructor.
-         *
-         * @param msg1 The first message to compare
-         * @param msg2 The second message to compare
-         * @return {Boolean}
-         */
-        compare : function(msg1,msg2) {
-            return msg1 === msg2;
         },
 
         /**
@@ -616,9 +624,7 @@ if (typeof MINIFIED === 'undefined'){
 
             this.started                        = true;
 
-            this.publish('Turbine|workflow|started', { isInternalTurbineMsg : true });
-            this.queue(this.getStartingQuery());
-
+            this.queue(null,this.getStartingQuery());
             this.next();
         },
 
@@ -634,8 +640,6 @@ if (typeof MINIFIED === 'undefined'){
             this.started                        = false;
 
             this.rewind();
-
-            this.publish('Turbine|workflow|stopped',{ isInternalTurbineMsg : true });
         },
 
         /**
@@ -651,8 +655,6 @@ if (typeof MINIFIED === 'undefined'){
             this.killed                         = true;
 
             this.rewind();
-
-            this.publish('Turbine|workflow|killed',{ isInternalTurbineMsg : true });
         },
 
         /**
@@ -693,11 +695,12 @@ if (typeof MINIFIED === 'undefined'){
                 return null;
             }
 
+            this.currentQuery                   = query;
             this.nextQuery                      = null;
             this.responses[query]               = this.getResponse(query);
 
             /* If the query doesn't exist, we can't go any further */
-            if (!this.utils.isObjLiteral(this.workflow.queries[query])) {
+            if (!this.utils.isObjLiteral(this.workflow[query])) {
 
                 this.report({
                     handle                      : 'QUERY_DOES_NOT_EXIST',
@@ -708,13 +711,13 @@ if (typeof MINIFIED === 'undefined'){
             }
 
             var responseName                    = this.responses[query];
-            var responseObj                     = this.workflow.queries[query][responseName];
+            var responseObj                     = this.workflow[query][responseName];
 
             /* If the response doesn't exist, check if a default response has been specified */
             if (!responseObj) {
 
                 responseName                    = 'default';
-                responseObj                     = this.workflow.queries[query][responseName];
+                responseObj                     = this.workflow[query][responseName];
 
                 /* If there's no default response specified either, then there's nothing else we can do */
                 if (!responseObj) {
@@ -731,14 +734,6 @@ if (typeof MINIFIED === 'undefined'){
             if (!MINIFIED){
                 this.log('exec', 'Executing the ' + responseName + ' response to the ' + query + ' query', responseObj, 'DEBUG');
             }
-
-            this.publish('Turbine|query|executed',{
-
-                query                           : query,
-                response                        : responseName,
-                responseObj                     : responseObj,
-                isInternalTurbineMsg            : true
-            });
 
             responseObj.responseName            = responseName;
 
@@ -796,6 +791,7 @@ if (typeof MINIFIED === 'undefined'){
 
                     if (response.repeat) {
 
+                        /* Clean up isAfterDelay flag */
                         if (response.isAfterDelay) {
 
                             try {
@@ -808,27 +804,24 @@ if (typeof MINIFIED === 'undefined'){
                         /* "repeat" repeats query */
                         this.repeat(query,response);
 
-                    } else if (response.then) {
+                    }
+                    /* "waitFor" tells us to wait for a message (or messages) before executing "then" query */
+                    else if (response.waitFor) {
 
-                        /* "waitFor" tells us to wait for an event (or events) before executed "then" query */
-                        if (response.waitFor) {
+                        this.queue(response.waitFor,response.then);
 
-                            if (this.isEarlierQuery(response.then,query)) {
+                    }
+                    /* Otherwise, "then" query gets executed immediately */
+                    else if (response.then){
 
-                                this.rewind(query,response.then,response.waitFor);
-
-                            } else {
-
-                                this.queue(response.then,response.waitFor);
-                            }
+                        if (this.isEarlierQuery(response.then,this.currentQuery)){
+                            this.rewind(this.currentQuery,response.then);
                         }
-                        /* Otherwise, "then" query gets executed immediately */
-                        else {
 
-                            this.exec(response.then);
-                        }
+                        this.exec(response.then);
                     }
 
+                    /* Clean up isPublishCallback flag */
                     if (response.isPublishCallback) {
 
                         try {
@@ -843,6 +836,7 @@ if (typeof MINIFIED === 'undefined'){
                         this.setResponseTimeout(query,response);
                     }
 
+                    /* Clean up isAfterDelay flag */
                     if (response.isAfterDelay) {
 
                         try {
@@ -871,7 +865,7 @@ if (typeof MINIFIED === 'undefined'){
                 name                            : this.name,
                 query                           : query,
                 response                        : responseName,
-                responseObj                     : this.workflow.queries[query][responseName],
+                responseObj                     : this.workflow[query][responseName],
                 timestamp                       : new Date().getTime()
             };
 
@@ -902,7 +896,7 @@ if (typeof MINIFIED === 'undefined'){
         },
 
         /**
-         * Repeats query on each event until limit is reached, after which the
+         * Repeats query on each message until limit is reached, after which the
          * fallback response is performed. If the limit is null, query can repeat infinitely.
          *
          * @param query The query to repeat
@@ -919,7 +913,7 @@ if (typeof MINIFIED === 'undefined'){
             /* If the limit is null, repeat query indefinitely */
             if (response.repeat.limit === null) {
 
-                this.queue(query,response.waitFor);
+                this.queue(response.waitFor,query);
             }
             /* If the limit has been reached, use fallback response */
             else if (response.repeat.counter >= response.repeat.limit) {
@@ -927,13 +921,6 @@ if (typeof MINIFIED === 'undefined'){
                 if (!MINIFIED){
                     this.log('repeat', 'Maximum repeat limit for ' + query + ' reached or exceeded (' + response.repeat.counter + ' of ' + response.repeat.limit + ' max)');
                 }
-
-                this.publish('Turbine|limit|exceeded|REPEAT',{
-
-                    query                       : query,
-                    limit                       : response.repeat.limit,
-                    isInternalTurbineMsg        : true
-                });
 
                 this.processResponse(query,response.repeat);
             }
@@ -947,10 +934,10 @@ if (typeof MINIFIED === 'undefined'){
                      * being pushed onto the array over and over. Slicing them off here means they can be added again
                      * without stacking up. */
                     if (this.utils.isArray(response.waitFor) && response.repeat.counter > 1) {
-                        response.waitFor        = response.waitFor.slice(0,response.waitFor.length - this.numGlobalListeners);
+                        response.waitFor        = response.waitFor.slice(0,response.waitFor.length - this.numAlwaysWaitFor);
                     }
 
-                    this.queue(query,response.waitFor);
+                    this.queue(response.waitFor,query);
 
                 } else {
 
@@ -965,9 +952,8 @@ if (typeof MINIFIED === 'undefined'){
          *
          * @param from The query from which to start the rewind
          * @param to The query to which we're rewinding
-         * @param eventHandle The event handle to wait for before executing the next query
          */
-        rewind : function(from,to,eventHandle) {
+        rewind : function(from,to) {
 
             this.clearTimers();
 
@@ -977,15 +963,8 @@ if (typeof MINIFIED === 'undefined'){
             to                                  = to || this.queryOrder[0];
 
             if (!MINIFIED){
-                this.log('rewind', 'Rewinding from ' + from + ' to ' + to, null, 'TRACE');
+                this.log('rewind', 'Rewinding from ' + from + ' to ' + to, null, 'DEBUG');
             }
-
-            this.publish('Turbine|workflow|rewind',{
-
-                from                            : from,
-                to                              : to,
-                isInternalTurbineMsg            : true
-            });
 
             for (var i=numQueries;i>=0;i--) {
 
@@ -1003,36 +982,29 @@ if (typeof MINIFIED === 'undefined'){
                     break;
                 }
             }
-
-            if (!this.isKilled()){
-                this.queue(to,eventHandle);
-            }
         },
 
         /**
          * Checks whether the new query is earlier than the current query
          * (e.g. we're going backwards in the workflow)
          *
-         * @param newQuery The query to execute next
+         * @param nextQuery The query to execute next
          * @param currentQuery The query we're currently executing
          */
-        isEarlierQuery : function(newQuery,currentQuery) {
+        isEarlierQuery : function(nextQuery,currentQuery) {
 
-            if (currentQuery === newQuery) {
-                return true;
+            if (currentQuery === nextQuery) {
+                return false;
             }
 
-            for (var i in this.queryOrder) {
+            for (var i=0;i<this.queryOrder.length;i++) {
 
-                if (this.queryOrder.hasOwnProperty(i)) {
+                if (this.queryOrder[i] === nextQuery) {
+                    return true;
+                }
 
-                    if (this.queryOrder[i] === newQuery) {
-                        return true;
-                    }
-
-                    if (this.queryOrder[i] === currentQuery) {
-                        return false;
-                    }
+                if (this.queryOrder[i] === currentQuery) {
+                    return false;
                 }
             }
 
@@ -1053,11 +1025,11 @@ if (typeof MINIFIED === 'undefined'){
             this.clearQueryTimer(query);
 
             /* Reset counters for repeat queries */
-            for (var response in this.workflow.queries[query]) {
+            for (var response in this.workflow[query]) {
 
-                if (this.workflow.queries[query].hasOwnProperty(response) && this.workflow.queries[query][response].repeat) {
+                if (this.workflow[query].hasOwnProperty(response) && this.workflow[query][response].repeat) {
 
-                    this.workflow.queries[query][response].repeat.counter = 0;
+                    this.workflow[query][response].repeat.counter = 0;
                 }
             }
 
@@ -1080,10 +1052,34 @@ if (typeof MINIFIED === 'undefined'){
          */
         resetResponse : function(query) {
 
-            if (typeof this.resets[query] === 'function'){
-                this.responses[query]           = this.resets[query]();
-            } else if (typeof this.resets[query] !== 'undefined'){
-                this.responses[query]           = this.resets[query];
+            /* If the query is dirty, just clear the dirty flag. Don't reset the response. */
+            if (this.isDirtyQuery(query)){
+
+                this.dirtyQueries[query]        = null;
+
+            }
+            /* If the query isn't dirty, reset the response */
+            else {
+
+                var didReset                    = false;
+
+                if (typeof this.resets[query] === 'function'){
+
+                    this.responses[query]       = this.resets[query]();
+                    didReset                    = true;
+
+                } else if (typeof this.resets[query] !== 'undefined'){
+
+                    this.responses[query]       = this.resets[query];
+                    didReset                    = true;
+                }
+
+                if (!MINIFIED){
+
+                    if (didReset){
+                        this.log('resetResponse', 'Reset ' + query + ' response to', this.responses[query] || 'false', 'DEBUG');
+                    }
+                }
             }
         },
 
@@ -1102,14 +1098,6 @@ if (typeof MINIFIED === 'undefined'){
             if (this.waitingFor) {
                 this.remove(this.waitingFor);
             }
-
-            this.publish('Turbine|timer|expired|WORKFLOW_RESPONSE_TIMEOUT',{
-
-                query                           : query,
-                response                        : response.responseName,
-                responseObj                     : response,
-                isInternalTurbineMsg            : true
-            });
 
             /* Set flag so timeout isn't triggered again during reprocessing */
             response.timeout.isAfterTimeout     = true;
@@ -1186,7 +1174,7 @@ if (typeof MINIFIED === 'undefined'){
         },
 
         /**
-         * Merges response's "using" object with config's always.using object (if it is defined).
+         * Merges response's "using" object with always.using object (if it is defined).
          *
          * @param using The response's "using" object
          */
@@ -1194,10 +1182,9 @@ if (typeof MINIFIED === 'undefined'){
 
             using                               = (typeof using === 'undefined') ? {} : using;
 
-            /* If the config has an always.using object defined, merge it into the response's using object */
-            if (this.workflow.config.always && this.workflow.config.always.using) {
-
-                using                           = this.utils.mergeObjects(using,this.workflow.config.always.using);
+            /* If an always.using object has been defined, merge it into the response's using object */
+            if (this.always.using) {
+                using                           = this.utils.mergeObjects(using,this.always.using);
             }
 
             if (!MINIFIED){
@@ -1218,13 +1205,6 @@ if (typeof MINIFIED === 'undefined'){
             if (!MINIFIED){
                 this.log('startDelayTimeout',query + ' delay started. Delayed for ' + response.delay.for + ' ms', response);
             }
-
-            this.publish('Turbine|delay|started',{
-
-                query                           : query,
-                delay                           : response.delay.for + ' ms',
-                isInternalTurbineMsg            : true
-            });
 
             var self                            = this;
 
@@ -1247,81 +1227,41 @@ if (typeof MINIFIED === 'undefined'){
                 this.log('onDelayTimeout',query + ' delay completed after ' + response.delay.for + ' ms', response);
             }
 
-            this.publish('Turbine|delay|completed',{
-
-                query                           : query,
-                delay                           : response.delay.for + ' ms',
-                isInternalTurbineMsg            : true
-            });
-
             this.processResponse(query,response.delay);
         },
 
         /**
          * Gets the query with which to start the workflow. If a @start shortcut
-         * is specified in the workflow config, that is used. Otherwise, the first
-         * query in the workflow is used.
+         * is specified, that is used. Otherwise, the first query in the workflow is used.
          *
          * @return {String}
          */
         getStartingQuery : function() {
 
-            var start                           = this.getConfigShortcut('start');
+            var start                           = this.getShortcut('start');
 
             return (start) ? start : this.queryOrder[0];
         },
 
         /**
-         * Imports global listener from workflow
+         * Queues query to be executed on next message
          *
-         * @param listener The listener to import
-         * @param workflow The workflow from which to import it
+         * @param waitFor The message(s) to wait for before executing the next query
+         * @param nextQuery The query to queue
          */
-        importGlobalListener : function(listener,workflow) {
-
-            if (!MINIFIED){
-                this.log('importGlobalListener', 'Importing global listener', listener, 'TRACE');
-            }
-
-            this.replaceShortcuts(listener,workflow);
-            this.replaceVariables(listener,workflow);
-
-            if (typeof listener.waitFor === 'string') {
-                listener.waitFor                = [listener.waitFor];
-            }
-
-            for (var i=0;i<listener.waitFor.length;i++) {
-
-                var msg                         = listener.waitFor[i];
-                this.globalListeners[msg]       = listener;
-                this.numGlobalListeners        += 1;
-            }
-        },
-
-        /**
-         * Queues query to be executed on next event
-         *
-         * @param query The query to queue
-         * @param message The message(s) to wait for before executing the next query
-         */
-        queue : function(query,message) {
+        queue : function(waitFor,nextQuery) {
 
             if (this.waitingFor) {
                 this.remove(this.waitingFor);
             }
 
-            this.waitingFor                     = this.buildWaitingForObj(message);
-            this.nextQueryObj                   = this.buildNextQueryObj(query,this.waitingFor);
-            this.nextQuery                      = query;
+            var result                          = this.parseWaitFor(waitFor,nextQuery,true);
+
+            this.waitingFor                     = result.waitingFor;
+            this.nextQueryObj                   = result.nextQueryObj;
+            this.nextQuery                      = nextQuery;
 
             if (this.waitingFor.length > 0){
-
-                this.publish('Turbine|workflow|waiting',{
-
-                    waitingFor                  : this.waitingFor,
-                    isInternalTurbineMsg        : true
-                });
-
                 this.listen(this.waitingFor,this.handleIncomingMessage.bind(this));
             }
 
@@ -1331,71 +1271,84 @@ if (typeof MINIFIED === 'undefined'){
                     this.log('queue', 'Waiting for', this.waitingFor);
                 }
 
-                this.log('queue', 'Queuing ' + this.nextQuery + ' query');
+                this.log('queue', 'Queuing next query', this.nextQueryObj);
             }
         },
 
         /**
-         * Builds object containing array of the current waitFor messages,
-         * along with global listeners.
+         * Parses waitFor into two forms: an array of the messages to wait for,
+         * and an object that maps messages to the next query to execute when the
+         * message is received.
          *
-         * @param message Array of messages to wait for
+         * waitFor can either be a message, an array of messages, an object with a
+         * message property, or an array of objects with message properties.
+         *
+         * @param waitFor Message or array of messages to wait for
+         * @param nextQuery The query to queue ("then")
+         * @param appendAlwaysWaitFor If true, always waitFor values are included
          */
-        buildWaitingForObj : function(message) {
+        parseWaitFor : function(waitFor,nextQuery,appendAlwaysWaitFor) {
 
-            var waitingFor                      = (message) ? message : [];
+            var waitingFor                      = [];
+            var nextQueryObj                    = {};
 
-            if (!this.utils.isArray(waitingFor)) {
-                waitingFor                      = [waitingFor];
-            }
+            if (waitFor){
 
-            /* Add global listeners to waitingFor object, if they're not already there */
-            for (var msg in this.globalListeners) {
+                /* waitFor is a single message, so we map it to nextQuery */
+                if (typeof waitFor === 'string'){
 
-                if (this.globalListeners.hasOwnProperty(msg)) {
+                    waitingFor.push(waitFor);
+                    nextQueryObj[waitFor] = nextQuery;
 
-                    for (var i=0;i<this.globalListeners[msg].waitFor.length;i++) {
+                } else {
 
-                        var globalListener      = this.globalListeners[msg].waitFor[i];
+                    if (this.utils.isObjLiteral(waitFor)) {
+                        waitFor                 = [waitFor];
+                    }
 
-                        if (!this.utils.inArray(globalListener,waitingFor)) {
-                            waitingFor.push(globalListener);
+                    for (var j=0;j<waitFor.length;j++){
+
+                        if (typeof waitFor[j] === 'string'){
+
+                            waitingFor.push(waitFor[j]);
+                            nextQueryObj[waitFor[j]] = nextQuery;
+
+                        } else if (typeof waitFor[j].message !== 'undefined'){
+
+                            if (this.utils.isArray(waitFor[j].message)){
+
+                                for (var k=0;k<waitFor[j].message.length;k++){
+                                    waitingFor.push(waitFor[j].message[k]);
+                                    nextQueryObj[waitFor[j].message[k]] = waitFor[j].then || nextQuery;
+                                }
+
+                            } else {
+
+                                waitingFor.push(waitFor[j].message);
+                                nextQueryObj[waitFor[j].message] = waitFor[j].then || nextQuery;
+                            }
                         }
                     }
                 }
             }
 
-            return waitingFor;
-        },
+            /* Add global listeners to waitingFor array, if they're not already there */
+            if (appendAlwaysWaitFor){
 
-        /**
-         * Build object that associates waitFor messages with the queries to
-         * execute once the waitFor message has been received.
-         *
-         * This is required because global listeners have different "then" queries
-         * than listeners in the query's waitFor array
-         *
-         * @param nextQuery The next query to execute
-         * @param waitingFor Array of messages to wait for
-         */
-        buildNextQueryObj : function(nextQuery,waitingFor) {
+                for (var msg in this.alwaysWaitFor) {
 
-            var nextQueryObj                    = {};
+                    if (this.alwaysWaitFor.hasOwnProperty(msg)) {
 
-            /* Add query waitFor messages to waitingFor object */
-            for (var i=0;i<waitingFor.length;i++) {
-                nextQueryObj[waitingFor[i]]     = nextQuery;
-            }
-
-            /* Add global listeners to waitingFor object */
-            for (var msg in this.globalListeners) {
-
-                if (this.globalListeners.hasOwnProperty(msg)) {
-                    nextQueryObj[msg]           = this.globalListeners[msg].then;
+                        waitingFor.push(msg);
+                        nextQueryObj[msg] = this.alwaysWaitFor[msg] || nextQuery;
+                    }
                 }
             }
 
-            return nextQueryObj;
+            return {
+                waitingFor   : waitingFor,
+                nextQueryObj : nextQueryObj
+            }
         },
 
         /**
@@ -1421,26 +1374,21 @@ if (typeof MINIFIED === 'undefined'){
                 this.nextQuery                  = this.getNextQuery(message);
             }
 
-            this.publish('Turbine|message|handled',{
-
-                handledMessage                  : message,
-                next                            : this.nextQuery,
-                isInternalTurbineMsg            : true
-            });
-
             this.waitingFor                     = null;
 
-            this.next();
+            if (this.isEarlierQuery(this.nextQuery,this.currentQuery)){
+                this.rewind(this.currentQuery,this.nextQuery);
+            }
+
+            if (!this.isKilled()){
+                this.next();
+            }
 
             return true;
         },
 
         /**
          * Gets the next query to execute based on the message being handled.
-         *
-         * When a message is handled, we need to determine whether it was handled
-         * as a global listener message or a query waitFor message, and then
-         * return the next step accordingly.
          *
          * @param message The message being handled
          */
@@ -1450,7 +1398,7 @@ if (typeof MINIFIED === 'undefined'){
 
             for (var msg in this.nextQueryObj) {
 
-                if (this.nextQueryObj.hasOwnProperty(msg) && this.compare(message,msg)) {
+                if (this.nextQueryObj.hasOwnProperty(msg) && message === msg) {
                     next                        = this.nextQueryObj[msg];
                     break;
                 }
@@ -1573,7 +1521,7 @@ if (typeof MINIFIED === 'undefined'){
             this.clearGlobalTimer();
 
             if (!MINIFIED){
-                this.log('startGlobalTimeout', 'Starting global timer', this.workflow.config.always.timeout, 'TRACE');
+                this.log('startGlobalTimeout', 'Starting global timer', this.always.timeout, 'TRACE');
             }
 
             var timeout                         = this.getGlobalTimeout();
@@ -1595,17 +1543,13 @@ if (typeof MINIFIED === 'undefined'){
          */
         getGlobalTimeout : function() {
 
-            if (this.utils.isObjLiteral(this.workflow.config) &&
-                this.utils.isObjLiteral(this.workflow.config.always) &&
-                this.utils.isObjLiteral(this.workflow.config.always.timeout) &&
-                this.workflow.config.always.timeout.after
-            ){
+            if (this.utils.isObjLiteral(this.always.timeout) && typeof this.always.timeout.after !== 'undefined'){
 
-                return this.workflow.config.always.timeout.after;
+                return this.always.timeout.after;
 
             } else {
 
-                return this.defaultGlobalTimeout;
+                return this.DEFAULT_GLOBAL_TIMEOUT;
             }
         },
 
@@ -1625,18 +1569,10 @@ if (typeof MINIFIED === 'undefined'){
                 this.log('onGlobalTimeout', 'Turbine timed out on ' + query + ' query after ' + this.getGlobalTimeout() + ' ms',null,'ERROR');
             }
 
-            this.publish('Turbine|timer|expired|WORKFLOW_GLOBAL_TIMEOUT', {
-
-                query                           : query,
-                response                        : response.responseName,
-                responseObj                     : response,
-                isInternalTurbineMsg            : true
-            });
-
             /* Set flag so timeout isn't triggered again during reprocessing */
-            this.workflow.config.always.timeout.isAfterTimeout = true;
+            this.always.timeout.isAfterTimeout  = true;
 
-            this.processResponse(null,this.workflow.config.always.timeout,true);
+            this.processResponse(null,this.always.timeout,true);
         },
 
         /**
@@ -1692,6 +1628,17 @@ if (typeof MINIFIED === 'undefined'){
         },
 
         /**
+         * Checks whether a query is "dirty": its response has been set
+         * via setResponse() while waiting for a message.
+         *
+         * @param query The query to check
+         * @returns {boolean}
+         */
+        isDirtyQuery : function(query){
+            return this.dirtyQueries[query] === true;
+        },
+
+        /**
          * Sets response to query
          *
          * @param query The query for which to set the response
@@ -1704,6 +1651,7 @@ if (typeof MINIFIED === 'undefined'){
             }
 
             this.responses[query]               = response;
+            this.dirtyQueries[query]            = true;
         },
 
         /**
@@ -1716,7 +1664,7 @@ if (typeof MINIFIED === 'undefined'){
             this.responses[query]               = (this.hasQueryFunction(query)) ? this.queries[query]() : this.responses[query];
 
             /* Convert boolean result to yes/no string */
-            if (typeof this.responses[query] === 'boolean' || !this.responses[query]) {
+            if (typeof this.responses[query] === 'boolean' || this.responses[query] === null || typeof this.responses[query] === 'undefined') {
                 this.responses[query]           = (this.responses[query]) ? 'yes' : 'no';
             }
 
@@ -1728,50 +1676,51 @@ if (typeof MINIFIED === 'undefined'){
         },
 
         /**
-         * Gets value of workflow config variable
+         * Gets value of variable
          *
          * @param varName The name of the variable for which to get the value
          * @return {*}
          */
-        getConfigVar : function(varName) {
+        getVar : function(varName) {
 
             /* Prepend dollar sign if not already there */
             varName                             = (varName.indexOf('$') === 0) ? varName.substr(1) : varName;
 
-            return (this.utils.isObjLiteral(this.workflow.config.variables)) ? this.workflow.config.variables[varName] : null;
+            return (typeof this.variables[varName] !== 'undefined') ? this.variables[varName] : null;
         },
 
         /**
-         * Gets value of workflow config shortcut
+         * Gets value of  shortcut
          *
          * @param shortcut The name of the shortcut for which to get the value
          * @return {*}
          */
-        getConfigShortcut : function(shortcut) {
+        getShortcut : function(shortcut) {
 
             /* Prepend @ symbol if not already there */
             shortcut                            = (shortcut.indexOf('@') !== 0) ? '@' + shortcut : shortcut;
 
-            return (this.utils.isObjLiteral(this.workflow.config) && this.utils.isObjLiteral(this.workflow.config.shortcuts)) ? this.workflow.config.shortcuts[shortcut] : null;
+            return this.shortcuts[shortcut] || null;
         },
 
         /**
          * Replaces variables in workflow with values.
          *
-         * Variables are defined in the workflow config and are always prepended with a $.
+         * Variables are defined in the initObj passed to the Turbine constructor. They are always
+         * prepended with a $ when referenced in the workflow.
+         *
          * They work just like variables in any other programming language. Define them and
          * then the value of the variable is used in its place.
          *
          * NOTE: Variables can only be used for scalar values. To replace non-scalar values,
          * use mixins instead.
          *
-         * "config" : {
-         *     "variables" : {
-         *         "startOverTimeout"       : "30000"
-         *     }
+         *
+         * "variables" : {
+         *     "startOverTimeout"       : "30000"
          * }
          *
-         * "queries" : {
+         * "workflow" : {
          *     "isStartOverAllowed" : {
          *         "yes" : {
          *             "waitFor"            : "App|process|restarted",
@@ -1788,15 +1737,14 @@ if (typeof MINIFIED === 'undefined'){
          * }
          *
          * @param target The response in which the variables are being replaced
-         * @param workflow The workflow being imported
          */
-        replaceVariables : function(target,workflow) {
+        replaceVariables : function(target) {
 
             var thisTarget, thisVar, replaceWith;
 
-            for (var variable in workflow.config.variables){
+            for (var variable in this.variables){
 
-                if (workflow.config.variables.hasOwnProperty(variable)){
+                if (this.variables.hasOwnProperty(variable)){
 
                     for (var item in target) {
 
@@ -1804,7 +1752,7 @@ if (typeof MINIFIED === 'undefined'){
 
                             thisTarget          = target[item];
                             thisVar             = '$'+variable;
-                            replaceWith         = workflow.config.variables[variable];
+                            replaceWith         = this.variables[variable];
 
                             /* Replace variables with values defined in source */
                             if (typeof thisTarget === 'string' && thisTarget.indexOf(thisVar) > -1) {
@@ -1817,7 +1765,7 @@ if (typeof MINIFIED === 'undefined'){
 
                             } else if (this.utils.isObjLiteral(thisTarget)) {
 
-                                this.replaceVariables(thisTarget,workflow);
+                                this.replaceVariables(thisTarget);
                             }
                         }
                     }
@@ -1827,19 +1775,20 @@ if (typeof MINIFIED === 'undefined'){
 
         /**
          * Replaces shortcuts in workflow with shortcut values. Shortcuts are defined in the
-         * workflow config, and are always prepended with an @ symbol when used.
+         * initObj passed to the Turbine constructor, and are always prepended with an @ symbol
+         * when referenced in the workflow.
          *
          * Shortcuts are a way to reference a particular query in the workflow with an alias,
          * rather than explicitly by name. For example, you may define a @start shortcut,
          * and then reference that with "then":
          *
-         * "config" : {
-         *     "shortcuts" : {
-         *         "start"      : "isWorkflowActive"
-         *     }
+         *
+         * "shortcuts" : {
+         *     "start"      : "isWorkflowActive"
          * }
          *
-         * "queries" : {
+         * "workflow" : {
+         *
          *     "isStartOverAllowed" : {
          *         "yes" : {
          *             "then"   : "@start" // <-- This is the shortcut
@@ -1854,10 +1803,9 @@ if (typeof MINIFIED === 'undefined'){
          * replace isWorkflowActive everywhere it occurs. Instead, you can just change the value of @start.
          *
          * @param response The response in which the shortcuts are being replaced
-         * @param workflow The workflow being imported
          */
-        replaceShortcuts : function(response,workflow) {
-            this.replace(response,workflow.config.shortcuts,'@',true,'shortcut');
+        replaceShortcuts : function(response) {
+            this.replace(response,this.shortcuts,'@',true,'shortcut');
         },
 
         /**
@@ -1867,7 +1815,7 @@ if (typeof MINIFIED === 'undefined'){
          * object over and over.
          *
          * Mixins are defined in their own object in the workflow. The mixin name is always
-         * prepended with a plus sign, and the value is always an object.
+         * prepended with a plus sign when referenced in the workflow.
          *
          * For example:
          *
@@ -1904,10 +1852,9 @@ if (typeof MINIFIED === 'undefined'){
          * Mixins are replaced recursively, so mixins can be nested within other mixins
          *
          * @param target The target object in which to replace mixins
-         * @param mixins Object containing mixin definitions
          */
-        replaceMixins : function(target,mixins) {
-            this.replace(target,mixins,'+',true,'mixin');
+        replaceMixins : function(target) {
+            this.replace(target,this.mixins,'+',true,'mixin');
         },
 
         /**
@@ -1918,7 +1865,7 @@ if (typeof MINIFIED === 'undefined'){
          * @param source The source object containing the values that will be inserted
          * @param prepend The string prepended to they key (i.e. $foo, @bar, +baz)
          * @param recursive If true, replacements will be done recursively in all nested objects
-         * @param type The type of replacement (mixin, variable, shortcut)
+         * @param type The type of replacement (mixin, shortcut)
          */
         replace : function(target,source,prepend,recursive,type) {
 
@@ -1928,7 +1875,7 @@ if (typeof MINIFIED === 'undefined'){
 
                     var thisItem                = target[item];
 
-                    /* Replace variables with values defined in source */
+                    /* Replace target with values defined in source */
                     if (typeof thisItem === 'string' && thisItem.indexOf(prepend) === 0) {
 
                         thisItem                = thisItem.substr(1);
