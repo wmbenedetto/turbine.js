@@ -31,13 +31,13 @@ if (typeof MINIFIED === 'undefined'){
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-(function(window,undefined) {
+(function(root,undefined) {
 
-    var $                                       = window.jQuery || null;
+    var $                                       = root.jQuery || null;
 
     if (!MINIFIED){
 
-        var console                             = window.console || {};
+        var console                             = root.console || {};
         console.log                             = (typeof console.log   === 'function') ? console.log   : function() {};
         console.info                            = (typeof console.info  === 'function') ? console.info  : console.log;
         console.error                           = (typeof console.error === 'function') ? console.error : console.log;
@@ -1973,10 +1973,10 @@ if (typeof MINIFIED === 'undefined'){
             return Turbine;
         });
     }
-    /* Otherwise, add Turbine to global namespace as Ron */
+    /* Otherwise, add Turbine to global namespace */
     else {
 
-        window.Turbine = Turbine;
+        root.Turbine = Turbine;
     }
 
-}(window));
+}(this)); // this will be window in a browser, global in NodeJS
