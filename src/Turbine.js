@@ -1698,7 +1698,7 @@ if (typeof MINIFIED === 'undefined'){
         getShortcut : function(shortcut) {
 
             /* Prepend @ symbol if not already there */
-            shortcut                            = (shortcut.indexOf('@') !== 0) ? '@' + shortcut : shortcut;
+            shortcut                            = (shortcut.indexOf('@') === 0) ? shortcut.substr(1) : shortcut;
 
             return this.shortcuts[shortcut] || null;
         },
