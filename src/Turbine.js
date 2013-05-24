@@ -1700,7 +1700,7 @@ if (typeof MINIFIED === 'undefined'){
             /* Prepend @ symbol if not already there */
             shortcut                            = (shortcut.indexOf('@') === 0) ? shortcut.substr(1) : shortcut;
 
-            return this.shortcuts[shortcut] || null;
+            return (typeof this.shortcuts[shortcut] !== 'undefined') ? this.shortcuts[shortcut] : null;
         },
 
         /**
