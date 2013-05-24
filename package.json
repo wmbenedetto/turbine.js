@@ -1,6 +1,6 @@
 {
     "name"                      : "turbine.js",
-    "version"                   : "0.2.1",
+    "version"                   : "0.3.1",
     "description"               : "Turbine.js is an event-driven JavaScript Workflow Engine.",
     "keywords"                  : ["workflow", "control","flow","state","machine"],
     "categories"                : ["Data","Events"],
