@@ -57,7 +57,7 @@ if (typeof MINIFIED === 'undefined'){
 
             return function() {
                 return self.apply(scope,arguments);
-            }
+            };
         };
     }
 
@@ -190,7 +190,7 @@ if (typeof MINIFIED === 'undefined'){
                 remove : function(message){
                     $(self).unbind(message);
                 }
-            }
+            };
         },
 
         /**
@@ -215,7 +215,7 @@ if (typeof MINIFIED === 'undefined'){
                 'report'
             ];
 
-            for (var i=0;i<validFunctions.length;i++) {
+            for (var i=0, validFunctionsLength = validFunctions.length;i<validFunctionsLength;i++) {  // local doesn't have to access the lenght of validFunctions each time through
 
                 thisFunc                        = validFunctions[i];
 
@@ -266,7 +266,7 @@ if (typeof MINIFIED === 'undefined'){
                 'mixins'
             ];
 
-            for (var i=0;i<validObjects.length;i++) {
+            for (var i=0, validObjectsLength = validObjects.length ; i<validObjectsLength;i++) {
 
                 thisObj                         = validObjects[i];
 
@@ -546,7 +546,7 @@ if (typeof MINIFIED === 'undefined'){
                 message                         = [message];
             }
 
-            for (var i=0;i<message.length;i++) {
+            for (var i=0, messageLength = message.length;i<messageLength;i++) {
                 this.pubsub.publish(message[i],payload);
             }
 
@@ -575,7 +575,7 @@ if (typeof MINIFIED === 'undefined'){
                 message                         = [message];
             }
 
-            for (var i=0;i<message.length;i++) {
+            for (var i=0, messageLength=message.length;i<messageLength;i++) {
                 this.pubsub.listen(message[i],handler);
             }
         },
@@ -599,7 +599,7 @@ if (typeof MINIFIED === 'undefined'){
                 message                         = [message];
             }
 
-            for (var i=0;i<message.length;i++) {
+            for (var i=0, messageLength = message.length;i<messageLength;i++) {
                  this.pubsub.remove(message[i]);
             }
         },
@@ -997,7 +997,7 @@ if (typeof MINIFIED === 'undefined'){
                 return false;
             }
 
-            for (var i=0;i<this.queryOrder.length;i++) {
+            for (var i=0, thisQueryOrderLength = this.queryOrder.length;i<thisQueryOrderLength;i++) {
 
                 if (this.queryOrder[i] === nextQuery) {
                     return true;
@@ -1306,7 +1306,7 @@ if (typeof MINIFIED === 'undefined'){
                         waitFor                 = [waitFor];
                     }
 
-                    for (var j=0;j<waitFor.length;j++){
+                    for (var j=0, waitForLength = waitFor.length;j<waitForLength;j++){
 
                         if (typeof waitFor[j] === 'string'){
 
@@ -1317,7 +1317,7 @@ if (typeof MINIFIED === 'undefined'){
 
                             if (this.utils.isArray(waitFor[j].message)){
 
-                                for (var k=0;k<waitFor[j].message.length;k++){
+                                for (var k=0, waitForJMessageLength = waitFor[j].message.length;k<waitForJMessageLength;k++){
                                     waitingFor.push(waitFor[j].message[k]);
                                     nextQueryObj[waitFor[j].message[k]] = waitFor[j].then || nextQuery;
                                 }
@@ -1348,7 +1348,7 @@ if (typeof MINIFIED === 'undefined'){
             return {
                 waitingFor   : waitingFor,
                 nextQueryObj : nextQueryObj
-            }
+            };
         },
 
         /**
@@ -1458,7 +1458,7 @@ if (typeof MINIFIED === 'undefined'){
                     this.log('clearQueryTimer', 'Clearing '+query+' query timer', this.timers.queries[query], 'TRACE');
                 }
 
-                for (var i=0;i<timerArray.length;i++) {
+                for (var i=0, timerArrayLength = timerArray.length;i<timerArrayLength;i++) {
                     clearTimeout(timerArray[i]);
                 }
 
@@ -1614,7 +1614,7 @@ if (typeof MINIFIED === 'undefined'){
          * @param query The query to check
          */
         isStopQuery : function(query) {
-            return query === 'stop.'
+            return query === 'stop.';
         },
 
         /**
@@ -1624,7 +1624,7 @@ if (typeof MINIFIED === 'undefined'){
          * @param query The query to check
          */
         isKillQuery : function(query) {
-            return query === 'kill!'
+            return query === 'kill!';
         },
 
         /**
@@ -1917,7 +1917,7 @@ if (typeof MINIFIED === 'undefined'){
              */
             inArray : function(item,source) {
 
-                for (var i=0;i<source.length;i++) {
+                for (var i=0, sourceLength = source.length;i<sourceLength;i++) {
 
                     if (item === source[i]) {
                         return true;
