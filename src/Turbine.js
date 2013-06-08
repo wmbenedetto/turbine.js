@@ -62,6 +62,46 @@ if (typeof MINIFIED === 'undefined'){
     }
 
     /**
+     * Add Object.keys() to Object prototype for older browsers (read IE < 9) 
+     *
+     * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/keys
+     * CCarsner
+     */
+    if (!Object.keys) {
+      Object.keys = (function () {
+        var hasOwnProperty = Object.prototype.hasOwnProperty,
+            hasDontEnumBug = !({toString: null}).propertyIsEnumerable('toString'),
+            dontEnums = [
+              'toString',
+              'toLocaleString',
+              'valueOf',
+              'hasOwnProperty',
+              'isPrototypeOf',
+              'propertyIsEnumerable',
+              'constructor'
+            ],
+            dontEnumsLength = dontEnums.length;
+     
+        return function (obj) {
+          if (typeof obj !== 'object' && typeof obj !== 'function' || obj === null) throw new TypeError('Object.keys called on non-object');
+     
+          var result = [];
+     
+          for (var prop in obj) {
+            if (hasOwnProperty.call(obj, prop)) result.push(prop);
+          }
+     
+          if (hasDontEnumBug) {
+            for (var i=0; i < dontEnumsLength; i++) {
+              if (hasOwnProperty.call(obj, dontEnums[i])) result.push(dontEnums[i]);
+            }
+          }
+          return result;
+        }
+      })()
+    };
+
+    /**
      * Initializes Turbine via initObj object.
      *
      * var initObj = {
@@ -214,8 +254,8 @@ if (typeof MINIFIED === 'undefined'){
                 'remove',
                 'report'
             ];
-
-            for (var i=0, validFunctionsLength = validFunctions.length;i<validFunctionsLength;i++) {  // local doesn't have to access the lenght of validFunctions each time through
+	    var i = validFunctions.length;
+	    while ( i-- ) { // decrementing while has half the assembly instructions when compiled to machine code. Seriously. Plus we also use less memory (no extra comparisson variable)
 
                 thisFunc                        = validFunctions[i];
 
@@ -266,7 +306,8 @@ if (typeof MINIFIED === 'undefined'){
                 'mixins'
             ];
 
-            for (var i=0, validObjectsLength = validObjects.length ; i<validObjectsLength;i++) {
+	    var i = validObjects.length;
+	    while ( i-- ) {
 
                 thisObj                         = validObjects[i];
 
@@ -350,7 +391,7 @@ if (typeof MINIFIED === 'undefined'){
             if (!MINIFIED){
                 this.log('importMixins', 'Importing mixins', this.mixins, 'DEBUG');
             }
-
+//TODO: Object.keys
             for (var mixin in this.mixins){
 
                 if (this.mixins.hasOwnProperty(mixin)){
@@ -373,6 +414,7 @@ if (typeof MINIFIED === 'undefined'){
             var totalQueries                    = 0;
 
             /* Imports each query in the workflow */
+//TODO: Object.keys
             for (var query in workflow) {
 
                 if (workflow.hasOwnProperty(query)) {
@@ -415,6 +457,7 @@ if (typeof MINIFIED === 'undefined'){
 
             this.replaceMixins(query);
 
+//TODO: Object.keys
             for (var response in workflow[query]) {
 
                 if (workflow[query].hasOwnProperty(response)) {
@@ -545,8 +588,8 @@ if (typeof MINIFIED === 'undefined'){
             if (typeof message === 'string') {
                 message                         = [message];
             }
-
-            for (var i=0, messageLength = message.length;i<messageLength;i++) {
+	    var i = message.length;
+	    while ( i-- ) {
                 this.pubsub.publish(message[i],payload);
             }
 
@@ -574,8 +617,8 @@ if (typeof MINIFIED === 'undefined'){
             if (typeof message === 'string') {
                 message                         = [message];
             }
-
-            for (var i=0, messageLength=message.length;i<messageLength;i++) {
+	    var i = message.length;
+	    while ( i-- ) {
                 this.pubsub.listen(message[i],handler);
             }
         },
@@ -599,7 +642,8 @@ if (typeof MINIFIED === 'undefined'){
                 message                         = [message];
             }
 
-            for (var i=0, messageLength = message.length;i<messageLength;i++) {
+	    var i = message.length;
+	    while ( i-- ) {
                  this.pubsub.remove(message[i]);
             }
         },
@@ -958,7 +1002,6 @@ if (typeof MINIFIED === 'undefined'){
             this.clearTimers();
 
             var clearing                        = false;
-            var numQueries                      = this.queryOrder.length;
             from                                = from || this.queryOrder[numQueries-1];
             to                                  = to || this.queryOrder[0];
 
@@ -966,7 +1009,8 @@ if (typeof MINIFIED === 'undefined'){
                 this.log('rewind', 'Rewinding from ' + from + ' to ' + to, null, 'DEBUG');
             }
 
-            for (var i=numQueries;i>=0;i--) {
+	    var i = this.queryOrder.length;
+	    while ( i-- ) {
 
                 var query                       = this.queryOrder[i];
 
@@ -982,6 +1026,7 @@ if (typeof MINIFIED === 'undefined'){
                     break;
                 }
             }
+
         },
 
         /**
@@ -997,7 +1042,8 @@ if (typeof MINIFIED === 'undefined'){
                 return false;
             }
 
-            for (var i=0, thisQueryOrderLength = this.queryOrder.length;i<thisQueryOrderLength;i++) {
+	    var i = this.queryOrder.length;
+	    while ( i-- ) {
 
                 if (this.queryOrder[i] === nextQuery) {
                     return true;
@@ -1025,6 +1071,7 @@ if (typeof MINIFIED === 'undefined'){
             this.clearQueryTimer(query);
 
             /* Reset counters for repeat queries */
+//TODO: Object.keys
             for (var response in this.workflow[query]) {
 
                 if (this.workflow[query].hasOwnProperty(response) && this.workflow[query][response].repeat) {
@@ -1306,7 +1353,8 @@ if (typeof MINIFIED === 'undefined'){
                         waitFor                 = [waitFor];
                     }
 
-                    for (var j=0, waitForLength = waitFor.length;j<waitForLength;j++){
+		    var j = waitFor.length;
+		    while ( j-- ) {
 
                         if (typeof waitFor[j] === 'string'){
 
@@ -1317,7 +1365,8 @@ if (typeof MINIFIED === 'undefined'){
 
                             if (this.utils.isArray(waitFor[j].message)){
 
-                                for (var k=0, waitForJMessageLength = waitFor[j].message.length;k<waitForJMessageLength;k++){
+				var k = waitFor[j].message.length;
+				while ( k-- ) {
                                     waitingFor.push(waitFor[j].message[k]);
                                     nextQueryObj[waitFor[j].message[k]] = waitFor[j].then || nextQuery;
                                 }
@@ -1334,7 +1383,7 @@ if (typeof MINIFIED === 'undefined'){
 
             /* Add global listeners to waitingFor array, if they're not already there */
             if (appendAlwaysWaitFor){
-
+// TODO: Object.keys
                 for (var msg in this.alwaysWaitFor) {
 
                     if (this.alwaysWaitFor.hasOwnProperty(msg)) {
@@ -1395,7 +1444,7 @@ if (typeof MINIFIED === 'undefined'){
         getNextQuery : function(message) {
 
             var next                            = null;
-
+//TODO: Object.keys
             for (var msg in this.nextQueryObj) {
 
                 if (this.nextQueryObj.hasOwnProperty(msg) && message === msg) {
@@ -1433,7 +1482,7 @@ if (typeof MINIFIED === 'undefined'){
             if (!MINIFIED){
                 this.log('clearAllQueryTimers', 'Clearing all query timers', this.timers.queries, 'TRACE');
             }
-
+//TODO: Object.keys
             for (var query in this.timers.queries) {
 
                 if (this.timers.queries.hasOwnProperty(query)) {
@@ -1458,7 +1507,8 @@ if (typeof MINIFIED === 'undefined'){
                     this.log('clearQueryTimer', 'Clearing '+query+' query timer', this.timers.queries[query], 'TRACE');
                 }
 
-                for (var i=0, timerArrayLength = timerArray.length;i<timerArrayLength;i++) {
+		var i = timerArray.length;
+		while ( i-- ) {
                     clearTimeout(timerArray[i]);
                 }
 
@@ -1741,11 +1791,12 @@ if (typeof MINIFIED === 'undefined'){
         replaceVariables : function(target) {
 
             var thisTarget, thisVar, replaceWith;
-
+//TODO:Object.keys
             for (var variable in this.variables){
 
                 if (this.variables.hasOwnProperty(variable)){
 
+//TODO:Object.keys
                     for (var item in target) {
 
                         if (target.hasOwnProperty(item)) {
@@ -1868,7 +1919,7 @@ if (typeof MINIFIED === 'undefined'){
          * @param type The type of replacement (mixin, shortcut)
          */
         replace : function(target,source,prepend,recursive,type) {
-
+//TODO:Object.keys
             for (var item in target) {
 
                 if (target.hasOwnProperty(item)) {
@@ -1917,7 +1968,8 @@ if (typeof MINIFIED === 'undefined'){
              */
             inArray : function(item,source) {
 
-                for (var i=0, sourceLength = source.length;i<sourceLength;i++) {
+		var i = source.length;
+		while ( i-- ) {
 
                     if (item === source[i]) {
                         return true;
@@ -1945,7 +1997,7 @@ if (typeof MINIFIED === 'undefined'){
              * @return {Object} Merged object
              */
             mergeObjects : function(target,source) {
-
+//TODO: Object.keys
                 for (var i in source) {
 
                     if (source.hasOwnProperty(i)) {
