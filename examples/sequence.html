@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Turbine.js</title>
+    <link type="text/css" rel="stylesheet" href="css/bootstrap.min.css">
+    <link type="text/css" rel="stylesheet" href="css/example.css">
+    <script language="JavaScript" type="text/javascript" src="js/jquery.min.js"></script>
+    <script language="JavaScript" type="text/javascript" src="js/bootstrap.min.js"></script>
+    <script language="JavaScript" type="text/javascript" src="../src/Turbine.js"></script>
+
+    <script language="JavaScript" type="text/javascript">
+
+        $(document).ready(function() {
+            
+            var seq = new Turbine({
+
+                name: 'SequenceTest',
+
+                logLevel: 'TRACE',
+
+                sequence: [
+                    {
+                        delay: {
+                            for: 3000,
+                            publish: 'step1',
+                            then: '@next'
+                        }
+                    },
+
+                    {
+                        delay: {
+                            for: 3000,
+                            publish: 'step2',
+                            then: 'stop.'
+                        }
+                    }
+                ]
+            });
+
+            $(seq).bind('step1', function() {
+                console.warn('step1 event triggered');
+            });
+
+            $(seq).bind('step2', function() {
+                console.warn('step2 event triggered');
+            });
+
+            seq.start();
+
+        });
+
+    </script>
+</head>
+<body>
+    <div id="wrapper"></div>
+</body>
+</html>
