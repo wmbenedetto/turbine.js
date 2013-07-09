@@ -140,6 +140,7 @@ if (typeof MINIFIED === 'undefined'){
         this.variables                          = {};
         this.waitingFor                         = null;
         this.workflow                           = {};
+        this.sequence                           = [];
 
         this.timers = {
             queries                             : {},
@@ -152,7 +153,13 @@ if (typeof MINIFIED === 'undefined'){
         this.importObjects(initObj);
         this.importAlways();
         this.importMixins();
-        this.importWorkflow(initObj);
+
+        if (initObj.workflow) {
+            this.importWorkflow(initObj);
+        }
+        else if (initObj.sequence) {
+            this.importSequence(initObj);
+        }
 
         if (typeof initObj.init === 'function'){
             initObj.init(this);
@@ -312,6 +319,74 @@ if (typeof MINIFIED === 'undefined'){
 
                 throw new Error(errorMsg);
             }
+        },
+
+        /**
+         * Imports sequence
+         *
+         * @param initObj Initialization object
+         */
+        importSequence : function(initObj) {
+
+            if (this.utils.isArray(initObj.sequence)) {
+
+                if (!MINIFIED){
+                    this.log('importSequence', 'Importing sequence', null, 'DEBUG');
+                }
+
+                this.sequence                   = initObj.sequence || [];
+                this.workflow                   = this.importSequenceQueries(this.sequence);
+
+                this.importQueries(this.workflow);
+
+            } else {
+
+                var errorMsg                    = '[' + this.name + '.importSequence()] Could not import sequence. Sequence must be an array.';
+
+                this.report({
+                    handle                      : 'COULD_NOT_IMPORT_SEQUENCE',
+                    desc                        : errorMsg
+                });
+
+                throw new Error(errorMsg);
+            }
+        },
+
+        /**
+         * Imports sequence queries
+         * 
+         * @param  {Array} sequence Array of query responses
+         * @return {Object}          Regular workflow object
+         */
+        importSequenceQueries : function(sequence) {
+
+            var workflow                        = {};
+            var i                               = 0;
+            var len                             = sequence.length;
+
+            // Create regular workflow object from sequence array
+            for (; i < len; i++) {
+
+                var query                       = sequence[i];
+                var stepCount                   = i + 1;
+
+                // Rewrites every instance of "then" in the query objects
+                this.utils.traverseObj(query, 0, function(obj, item) {
+                    
+                    // replace "@next" with the name of the next query (or with "stop." if it's the last query)
+                    if (item === 'then' && obj[item] === '@next') {
+                        var nextStepCount       = stepCount + 1;
+                        obj[item]               = (nextStepCount > sequence.length) ? 'stop.' : 'step' + nextStepCount;
+                    }
+
+                });
+
+                // Name all queries in sequence as "step1", "step2", etc.
+                // only "no" response block is needed since all query responses default to "no"
+                workflow['step' + stepCount]    = { no: query };
+            }
+
+            return workflow;
         },
 
         /**
@@ -1962,6 +2037,25 @@ if (typeof MINIFIED === 'undefined'){
                 }
 
                 return target;
+            },
+
+            // Recursively traverses an object, executing a callback on every node that's not another object
+            traverseObj : function (obj, depth, callback) {
+                // start at level 0
+                var depth       = depth || 0;
+                callback        = callback || null;
+
+                for (var item in obj) {
+                    // if we find a child object
+                    if (typeof obj[item] === 'object') {
+                        // recursively call myself again to loop through the child object
+                        // "this" refers to "this.utils"
+                        this.traverseObj(obj[item], ++depth, callback);
+                    }
+                    else if (callback) {
+                        callback(obj, item);
+                    }
+                }
             }
         }
     };
