@@ -66,8 +66,11 @@ if (typeof MINIFIED === 'undefined'){
      *
      * var initObj = {
      *
-     *     // REQUIRED
+     *     // THIS IS REQUIRED ...
      *     workflow    : {},
+     *
+     *     // *OR* THIS IS REQUIRED (BUT NOT BOTH)
+     *     sequence     : [],
      *
      *     // OPTIONAL
      *     name        : '',
@@ -83,7 +86,7 @@ if (typeof MINIFIED === 'undefined'){
      *     report      : function(){}
      * };
      *
-     * The initObj must define the workflow.
+     * The initObj must define either a workflow OR a sequence (but not both)
      *
      * It can also optionally define functions for publish(),
      * listen(), and remove(). If these aren't defined, jQuery's
@@ -140,7 +143,6 @@ if (typeof MINIFIED === 'undefined'){
         this.variables                          = {};
         this.waitingFor                         = null;
         this.workflow                           = {};
-        this.sequence                           = [];
 
         this.timers = {
             queries                             : {},
@@ -155,9 +157,11 @@ if (typeof MINIFIED === 'undefined'){
         this.importMixins();
 
         if (initObj.workflow) {
+
             this.importWorkflow(initObj);
-        }
-        else if (initObj.sequence) {
+
+        } else if (initObj.sequence) {
+
             this.importSequence(initObj);
         }
 
@@ -334,10 +338,11 @@ if (typeof MINIFIED === 'undefined'){
                     this.log('importSequence', 'Importing sequence', null, 'DEBUG');
                 }
 
-                this.sequence                   = initObj.sequence || [];
-                this.workflow                   = this.importSequenceQueries(this.sequence);
+                initObj.sequence                = initObj.sequence || [];
+                initObj.workflow                = this.importSequenceQueries(initObj.sequence);
+                initObj.sequence                = null;
 
-                this.importQueries(this.workflow);
+                this.importWorkflow(initObj);
 
             } else {
 
@@ -353,37 +358,44 @@ if (typeof MINIFIED === 'undefined'){
         },
 
         /**
-         * Imports sequence queries
-         * 
-         * @param  {Array} sequence Array of query responses
+         * Imports sequence queries, converting them to a regular workflow.
+         * Sequence steps are re-named to queries named like "SEQUENCE_STEP_1", "SEQUENCE_STEP_2", etc.
+         * with the sequence step body converted to the "default" response for the query.
+         *
+         * @param  {Array} sequence  Array of query responses
          * @return {Object}          Regular workflow object
          */
         importSequenceQueries : function(sequence) {
 
             var workflow                        = {};
-            var i                               = 0;
             var len                             = sequence.length;
+            var self                            = this;
+            var stepBaseName                    = 'SEQUENCE_STEP_';
 
-            // Create regular workflow object from sequence array
-            for (; i < len; i++) {
+            /* Create regular workflow object from sequence array */
+            for (var i=0;i<len;i++) {
 
                 var query                       = sequence[i];
-                var stepCount                   = i + 1;
+                var currentStepCount            = i + 1;
 
-                // Rewrites every instance of "then" in the query objects
-                this.utils.traverseObj(query, 0, function(obj, item) {
-                    
-                    // replace "@next" with the name of the next query (or with "stop." if it's the last query)
-                    if (item === 'then' && obj[item] === '@next') {
-                        var nextStepCount       = stepCount + 1;
-                        obj[item]               = (nextStepCount > sequence.length) ? 'stop.' : 'step' + nextStepCount;
-                    }
+                (function(q,c){
 
-                });
+                    /* Rewrite every instance of "then" in the query objects */
+                    self.utils.traverseObj(q, 0, function(obj, item) {
 
-                // Name all queries in sequence as "step1", "step2", etc.
-                // only "no" response block is needed since all query responses default to "no"
-                workflow['step' + stepCount]    = { no: query };
+                        /* Replace "@next" with the name of the next query (or with "stop." if it's the last query) */
+                        if (item === 'then' && obj[item] === '@next') {
+                            var nextStepCount   = c + 1;
+                            obj[item]           = (nextStepCount > sequence.length) ? 'stop.' : stepBaseName + nextStepCount;
+                        }
+                    });
+
+                }(query,currentStepCount));
+
+
+                /* Name all queries in sequence as "SEQUENCE_STEP_1", "SEQUENCE_STEP_2", etc.
+                 * Only the "default" response body is needed since all query responses default to "default" */
+                workflow[stepBaseName + currentStepCount]    = { default : query };
             }
 
             return workflow;
@@ -2041,18 +2053,22 @@ if (typeof MINIFIED === 'undefined'){
 
             // Recursively traverses an object, executing a callback on every node that's not another object
             traverseObj : function (obj, depth, callback) {
+
                 // start at level 0
-                var depth       = depth || 0;
+                depth           = depth || 0;
                 callback        = callback || null;
 
                 for (var item in obj) {
+
                     // if we find a child object
-                    if (typeof obj[item] === 'object') {
+                    if (obj.hasOwnProperty(item) && typeof obj[item] === 'object') {
+
                         // recursively call myself again to loop through the child object
                         // "this" refers to "this.utils"
                         this.traverseObj(obj[item], ++depth, callback);
-                    }
-                    else if (callback) {
+
+                    } else if (callback) {
+
                         callback(obj, item);
                     }
                 }
