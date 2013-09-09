@@ -34,14 +34,14 @@
     "dependencies"              : [],
     "homepage"                  : "https://github.com/wmbenedetto/turbine.js",
     "github"                    : "https://github.com/wmbenedetto/turbine.js",
-    "main"                      : "src/Turbine.js",
+    "main"                      : "src/Turbine.min.js",
 
     "jam" : {
 
-        "main"                  : "src/Turbine.js",
+        "main"                  : "src/Turbine.min.js",
 
         "include": [
-            "src/Turbine.js"
+            "src/Turbine.min.js"
         ]
     }
 }
