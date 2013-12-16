@@ -769,6 +769,12 @@ if (typeof MINIFIED === 'undefined'){
 
             this.clearTimers();
 
+            /* If the query is an object literal, it means it's a nested response body */
+            if (this.utils.isObjLiteral(query)){
+                this.processResponse('__nested',query);
+                return null;
+            }
+
             if (this.isKillQuery(query)) {
                 this.kill();
             }
@@ -991,14 +997,23 @@ if (typeof MINIFIED === 'undefined'){
          */
         repeat : function(query,response) {
 
+            if (typeof response.repeat.counter !== 'number'){
+                response.repeat.counter         = 0;
+            }
+
             response.repeat.counter            += 1;
 
             if (!MINIFIED){
-                this.log('repeat', 'Repeating ' + query + ' (' + response.repeat.counter + ' of ' + response.repeat.limit + ' max)');
+                this.log('repeat', 'Repeating ' + query + ' (' + response.repeat.counter + ' of ' + (response.repeat.limit || 'unlimited') + ' max)');
             }
 
             /* If the limit is null, repeat query indefinitely */
             if (response.repeat.limit === null) {
+
+                /* If we're in a nested response body, then the nested response should be queued instead of the query */
+                if (query === '__nested'){
+                    query = response;
+                }
 
                 this.queue(response.waitFor,query);
             }
@@ -1022,6 +1037,11 @@ if (typeof MINIFIED === 'undefined'){
                      * without stacking up. */
                     if (this.utils.isArray(response.waitFor) && response.repeat.counter > 1) {
                         response.waitFor        = response.waitFor.slice(0,response.waitFor.length - this.numAlwaysWaitFor);
+                    }
+
+                    /* If we're in a nested response body, then the nested response should be queued instead of the query */
+                    if (query === '__nested'){
+                        query = response;
                     }
 
                     this.queue(response.waitFor,query);
