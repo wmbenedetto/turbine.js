@@ -1,7 +1,7 @@
 var cartInit = {
 
     name                                        : 'CartExample',
-    logLevel                                    : 'DEBUG',
+    logLevel                                    : 'TRACE',
 
     queries : {
 
@@ -39,11 +39,13 @@ var cartInit = {
     always : {
 
         timeout : {
-            after                               : 300000,
-            publish : {
-                message                         : "CartExample|issue|detected|WORKFLOW_GLOBAL_TIMEOUT"
-            },
-            then                                : "stop."
+            after                               : 3000,
+            then : {
+                publish : {
+                    message                     : "CartExample|issue|detected|WORKFLOW_GLOBAL_TIMEOUT"
+                },
+                then                            : "stop."
+            }
         },
 
         waitFor : {
@@ -62,13 +64,15 @@ var cartInit = {
             no : {
                 delay : {
                     for                         : 2500,
-                    publish : {
-                        message                 : 'CartExample|checkout|completed',
-                        using : {
-                            content             : 'success'
-                        }
-                    },
-                    then                        : '@start'
+                    then : {
+                        publish : {
+                            message             : 'CartExample|checkout|completed',
+                            using : {
+                                content         : 'success'
+                            }
+                        },
+                        then                    : '@start'
+                    }
                 }
             }
         },
@@ -141,16 +145,18 @@ var queries = {
                 waitFor                         : 'Cart|item|added',
                 repeat : {
                     limit                       : 3,
-                    publish : {
-                        message                 : 'CartExample|issue|detected',
-                        using : {
-                            content             : 'loginRequiredBeforeCart',
-                            emptyCart           : true,
-                            forceSignup         : true
-                        }
-                    },
-                    waitFor                     : 'Signup|signup|completed',
-                    then                        : '@start'
+                    then : {
+                        publish : {
+                            message             : 'CartExample|issue|detected',
+                            using : {
+                                content         : 'loginRequiredBeforeCart',
+                                emptyCart       : true,
+                                forceSignup     : true
+                            }
+                        },
+                        waitFor                 : 'Signup|signup|completed',
+                        then                    : '@start'
+                    }
                 }
             }
         },
@@ -173,7 +179,7 @@ var queries = {
                 then                            : '@start'
             },
             no : {
-                "then"                          : "@start"
+                then                            : "@start"
             }
         }
     },
@@ -190,7 +196,7 @@ var queries = {
                 then                            : 'gotSpecialOffer'
             },
             no : {
-                then                            : 'stop'
+                then                            : 'stop.'
             }
         },
 
@@ -232,13 +238,15 @@ var queries = {
                 ],
                 timeout : {
                     after                       : 2000,
-                    publish : {
-                        message                 : 'CartExample|item|missing',
-                        using : {
-                            content             : 'addDualshock'
-                        }
-                    },
-                    then                        : '@start'
+                    then : {
+                        publish : {
+                            message             : 'CartExample|item|missing',
+                            using : {
+                                content         : 'addDualshock'
+                            }
+                        },
+                        then                    : '@start'
+                    }
                 },
                 then                            : 'gotSpecialOffer'
             },
@@ -249,13 +257,15 @@ var queries = {
                 ],
                 timeout : {
                     after                       : 2000,
-                    publish : {
-                        message                 : 'CartExample|item|missing',
-                        using : {
-                            content             : 'addCharger'
-                        }
-                    },
-                    then                        : '@start'
+                    then : {
+                        publish : {
+                            message             : 'CartExample|item|missing',
+                            using : {
+                                content         : 'addCharger'
+                            }
+                        },
+                        then                    : '@start'
+                    }
                 },
                 then                            : 'gotSpecialOffer'
             },

@@ -339,7 +339,7 @@ if (typeof MINIFIED === 'undefined'){
                 }
 
                 initObj.sequence                = initObj.sequence || [];
-                initObj.workflow                = this.importSequenceQueries(initObj.sequence);
+                initObj.workflow                = this.importSequenceSteps(initObj.sequence);
                 initObj.sequence                = null;
 
                 this.importWorkflow(initObj);
@@ -358,14 +358,14 @@ if (typeof MINIFIED === 'undefined'){
         },
 
         /**
-         * Imports sequence queries, converting them to a regular workflow.
-         * Sequence steps are re-named to queries named like "SEQUENCE_STEP_1", "SEQUENCE_STEP_2", etc.
+         * Imports sequence steps, converting them to a regular workflow.
+         * Each step is re-named to a query named like "SEQUENCE_STEP_1", "SEQUENCE_STEP_2", etc.
          * with the sequence step body converted to the "default" response for the query.
          *
          * @param  {Array} sequence  Array of query responses
          * @return {Object}          Regular workflow object
          */
-        importSequenceQueries : function(sequence) {
+        importSequenceSteps : function(sequence) {
 
             var workflow                        = {};
             var len                             = sequence.length;
