@@ -308,8 +308,8 @@ if (typeof MINIFIED === 'undefined'){
 
                 this.replaceMixins(this.workflow);
 
-                if (this.utils.isObjLiteral(initObj.workflow)) {
-                    this.importQueries(initObj.workflow);
+                if (this.utils.isObjLiteral(this.workflow)) {
+                    this.importQueries(this.workflow);
                 }
 
             } else {
@@ -363,14 +363,17 @@ if (typeof MINIFIED === 'undefined'){
          * with the sequence step body converted to the "default" response for the query.
          *
          * @param  {Array} sequence  Array of query responses
+         * @param  {String} prefix   Optional prefix to prepend to sequence step name
          * @return {Object}          Regular workflow object
          */
-        importSequenceSteps : function(sequence) {
+        importSequenceSteps : function(sequence,prefix) {
+
+            prefix                              = (typeof prefix === 'string') ? prefix + '_' : '';
 
             var workflow                        = {};
             var len                             = sequence.length;
             var self                            = this;
-            var stepBaseName                    = 'SEQUENCE_STEP_';
+            var stepBaseName                    = prefix + 'SEQUENCE_STEP_';
 
             /* Create regular workflow object from sequence array */
             for (var i=0;i<len;i++) {
@@ -519,6 +522,11 @@ if (typeof MINIFIED === 'undefined'){
          */
         importResponse : function(response,query,workflow) {
 
+            /* If the response is an array, it's a sequence. Import it to convert it to query/response format.  */
+            if (this.utils.isArray(workflow[query][response])){
+                this.importResponseSequence(response,query,workflow);
+            }
+
             var thisResponse                    = workflow[query][response];
 
             if (!MINIFIED){
@@ -532,6 +540,45 @@ if (typeof MINIFIED === 'undefined'){
 
             this.replaceShortcuts(thisResponse);
             this.replaceVariables(thisResponse);
+        },
+
+        /**
+         * Imports response that is formatted as a sequence
+         *
+         * @param response The response to import
+         * @param query The query being imported
+         * @param workflow The workflow being imported
+         */
+        importResponseSequence : function(response,query,workflow){
+
+            if (!MINIFIED){
+                this.log('importResponseSequence', 'Importing response sequence for ' + response + ' response to ' + query + ' query', null, 'TRACE');
+            }
+
+            var seqSteps                        = this.importSequenceSteps(workflow[query][response],query);
+            var firstStepName                   = null;
+
+            this.replaceMixins(seqSteps);
+            this.importQueries(seqSteps);
+
+            /* Append each sequence step to workflow */
+            for (var step in seqSteps){
+
+                if (seqSteps.hasOwnProperty(step)){
+
+                    /* Store name of first step in sequence */
+                    if (!firstStepName){
+                        firstStepName           = step;
+                    }
+
+                    this.workflow[step]         = seqSteps[step];
+                }
+            }
+
+            /* Update response body so it points to first step in sequence */
+            workflow[query][response] = {
+                then : firstStepName
+            };
         },
 
         /**
@@ -870,7 +917,6 @@ if (typeof MINIFIED === 'undefined'){
 
                 /* If we have "publish" with no "waitFor", then just publish the message and move on */
                 if (response.publish && !response.waitFor && !response.isPublishCallback) {
-
                     this.publishNow(query,response);
                 }
 
@@ -2071,8 +2117,14 @@ if (typeof MINIFIED === 'undefined'){
                 return target;
             },
 
-            // Recursively traverses an object, executing a callback on every node that's not another object
-            traverseObj : function (obj, depth, callback) {
+            /**
+             * Recursively traverses an object, executing a callback on every node that's not another object
+             *
+             * @param obj The object to traverse
+             * @param depth The depth of the traversal
+             * @param callback The callback function to execute
+             */
+            traverseObj : function (obj,depth,callback) {
 
                 // start at level 0
                 depth           = depth || 0;
@@ -2109,4 +2161,4 @@ if (typeof MINIFIED === 'undefined'){
         root.Turbine = Turbine;
     }
 
-}(this)); // this will be window in a browser, global in NodeJS
+}(this)); // "this" will be window in a browser, global in NodeJS
