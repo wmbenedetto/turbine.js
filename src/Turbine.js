@@ -871,16 +871,16 @@ if (typeof MINIFIED === 'undefined'){
             }
 
             var responseName                    = this.responses[query];
-            var actionObj                       = this.workflow[query][responseName];
+            var responseObj                     = this.workflow[query][responseName];
 
             /* If the action doesn't exist, check if a default action has been specified */
-            if (!actionObj) {
+            if (!responseObj) {
 
                 responseName                    = 'default';
-                actionObj                       = this.workflow[query][responseName];
+                responseObj                     = this.workflow[query][responseName];
 
                 /* If there's no default action specified either, then there's nothing else we can do */
-                if (!actionObj) {
+                if (!responseObj) {
 
                     this.report({
                         handle                  : 'RESPONSE_DOES_NOT_EXIST',
@@ -892,12 +892,12 @@ if (typeof MINIFIED === 'undefined'){
             }
 
             if (!MINIFIED){
-                this.log('exec', 'Executing the ' + responseName + ' response to the ' + query + ' query', actionObj, 'DEBUG');
+                this.log('exec', 'Executing the ' + responseName + ' response to the ' + query + ' query', responseObj, 'DEBUG');
             }
 
-            actionObj.responseName              = responseName;
+            responseObj.responseName            = responseName;
 
-            this.processResponse(query,actionObj);
+            this.processResponse(query,responseObj);
         },
 
         /**
@@ -923,92 +923,71 @@ if (typeof MINIFIED === 'undefined'){
                 this.startGlobalTimeout(query,response);
             }
 
-            if (response.delay && !response.isAfterDelay) {
-
+            /* "delay" tells us to wait some amount of time before executing whatever
+             * is inside the delay object */
+            if (response.delay) {
                 this.startDelayTimeout(query,response);
+            }
+
+            /* "report" tells us to report an issue. We only want to report it once, so
+             * we ignore it if we're processing the response as part of a publish callback */
+            if (response.report && !response.isPublishCallback) {
+                this.reportIssueFromWorkflow(query,response);
+            }
+
+            /* If we have "publish" with no "waitFor", then just publish the message and move on */
+            if (response.publish && !response.waitFor && !response.isPublishCallback) {
+                this.publishNow(query,response);
+            }
+
+            /* If "then" is an array, turn it into a nested action object */
+            if (this.utils.isArray(response.then)){
+                response.then                           = this.nestThenSequence(response);
+            }
+
+            /* If we have "publish" with "waitFor", then publish the message and wait for a response
+             * before continuing. */
+            if (response.publish && response.waitFor && !response.isPublishCallback) {
+
+                this.publishAndWait(query,response);
 
             } else {
 
-                /* "report" tells us to report an issue. We only want to report it once, so
-                 * we ignore it if we're processing the response as part of a publish callback */
-                if (response.report && !response.isPublishCallback) {
-                    this.reportIssueFromWorkflow(query,response);
+                if (response.repeat) {
+
+                    /* "repeat" repeats query */
+                    this.repeat(query,response);
+
+                }
+                /* "waitFor" tells us to wait for a message (or messages) before executing "then" query */
+                else if (response.waitFor) {
+
+                    this.queue(response.waitFor,response.then);
+
+                }
+                /* Otherwise, "then" query gets executed immediately */
+                else if (response.then){
+
+                    if (this.isEarlierQuery(this.currentQuery,response.then)){
+                        this.rewind(this.currentQuery,response.then);
+                    }
+
+                    this.exec(response.then);
                 }
 
-                /* If we have "publish" with no "waitFor", then just publish the message and move on */
-                if (response.publish && !response.waitFor && !response.isPublishCallback) {
-                    this.publishNow(query,response);
+                /* Clean up isPublishCallback flag */
+                if (response.isPublishCallback) {
+
+                    try {
+                        delete response.isPublishCallback;
+                    } catch (e) {
+                        response.isPublishCallback  = undefined;
+                    }
                 }
 
-                /* If "then" is an array, turn it into a nested action object */
-                if (this.utils.isArray(response.then)){
-                    response.then                           = this.nestActionSequence(response);
-                }
-
-                /* If we have "publish" with "waitFor", then publish the message and wait for a response
-                 * before continuing. */
-                if (response.publish && response.waitFor && !response.isPublishCallback) {
-
-                    this.publishAndWait(query,response);
-
-                } else {
-
-                    if (response.repeat) {
-
-                        /* Clean up isAfterDelay flag */
-                        if (response.isAfterDelay) {
-
-                            try {
-                                delete response.isAfterDelay;
-                            } catch (e) {
-                                response.isAfterDelay       = undefined;
-                            }
-                        }
-
-                        /* "repeat" repeats query */
-                        this.repeat(query,response);
-
-                    }
-                    /* "waitFor" tells us to wait for a message (or messages) before executing "then" query */
-                    else if (response.waitFor) {
-
-                        this.queue(response.waitFor,response.then);
-
-                    }
-                    /* Otherwise, "then" query gets executed immediately */
-                    else if (response.then){
-
-                        if (this.isEarlierQuery(this.currentQuery,response.then)){
-                            this.rewind(this.currentQuery,response.then);
-                        }
-
-                        this.exec(response.then);
-                    }
-
-                    /* Clean up isPublishCallback flag */
-                    if (response.isPublishCallback) {
-
-                        try {
-                            delete response.isPublishCallback;
-                        } catch (e) {
-                            response.isPublishCallback  = undefined;
-                        }
-                    }
-
-                    /* If this response has a timeout, set the timer */
-                    if (response.timeout) {
-                        this.setResponseTimeout(query,response);
-                    }
-
-                    /* Clean up isAfterDelay flag */
-                    if (response.isAfterDelay) {
-
-                        try {
-                            delete response.isAfterDelay;
-                        } catch (e) {
-                            response.isAfterDelay       = undefined;
-                        }
-                    }
+                /* If this response has a timeout, set the timer */
+                if (response.timeout) {
+                    this.setResponseTimeout(query,response);
                 }
             }
         },
@@ -1059,35 +1038,38 @@ if (typeof MINIFIED === 'undefined'){
          *     }
          * }
          *
-         * @param response The response containing the sequence in the 'then' property
+         * @param response The response containing the sequence in the "then" property
          * @returns {*} Object containing nested actions
          */
-        nestActionSequence : function(response){
+        nestThenSequence : function(response){
 
             var nestedSteps                     = null;
-            var thisStep                        = null;
+            var self                            = this;
 
             /* Loop through steps in sequence */
             for (var i=0;i<response.then.length;i++){
 
                 /* Create object to hold nested steps */
                 if (!nestedSteps){
-
                     nestedSteps                 = response.then[i];
-                    thisStep                    = response.then[i];
-
-                } else {
-
-                    thisStep                    = nestedSteps.then;
                 }
 
                 /* Set the next step in the sequence as an action for the
-                 * then property of the current action to execute */
-                if ((i+1) < response.then.length){
+                 * "then" property of the current action to execute */
+                if (i < response.then.length){
 
-                    if (thisStep.then === '@next'){
-                        thisStep.then           = response.then[i+1];
-                    }
+                    (function(nestedSteps,nextStep){
+
+                        /* Rewrite every instance of "then" */
+                        self.utils.traverseObj(nestedSteps, 0, function(obj, item) {
+
+                            /* Replace "@next" with the nextStep object */
+                            if (item === 'then' && obj[item] === '@next') {
+                                obj[item]           = nextStep;
+                            }
+                        });
+
+                    }(nestedSteps,response.then[i+1]));
                 }
             }
 
@@ -1110,7 +1092,7 @@ if (typeof MINIFIED === 'undefined'){
                 name                            : this.name,
                 query                           : query,
                 response                        : responseName,
-                actionObj                       : this.workflow[query][responseName],
+                responseObj                     : this.workflow[query][responseName],
                 timestamp                       : new Date().getTime()
             };
 
