@@ -1163,6 +1163,11 @@ if (typeof MINIFIED === 'undefined'){
             /* If limit hasn't been reached, queue or execute same query again */
             else {
 
+                /* If we're in a nested action object, then the nested action should be repeated instead of the query */
+                if (query === '__nested'){
+                    query = response;
+                }
+
                 if (response.waitFor) {
 
                     /* When waitFor is an array, it is passed by reference. Because the global listeners are added
@@ -1171,11 +1176,6 @@ if (typeof MINIFIED === 'undefined'){
                      * without stacking up. */
                     if (this.utils.isArray(response.waitFor) && response.repeat.counter > 1) {
                         response.waitFor        = response.waitFor.slice(0,response.waitFor.length - this.numAlwaysWaitFor);
-                    }
-
-                    /* If we're in a nested action object, then the nested action should be queued instead of the query */
-                    if (query === '__nested'){
-                        query = response;
                     }
 
                     this.queue(response.waitFor,query);
