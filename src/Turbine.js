@@ -66,11 +66,8 @@ if (typeof MINIFIED === 'undefined'){
      *
      * var initObj = {
      *
-     *     // THIS IS REQUIRED ...
+     *     // THIS IS REQUIRED
      *     workflow    : {},
-     *
-     *     // *OR* THIS IS REQUIRED (BUT NOT BOTH)
-     *     sequence     : [],
      *
      *     // OPTIONAL
      *     name        : '',
@@ -156,6 +153,18 @@ if (typeof MINIFIED === 'undefined'){
         this.importAlways();
         this.importMixins();
 
+        /* If the workflow property, is an array, it's a sequence. */
+        if (this.utils.isArray(initObj.workflow)){
+
+            initObj.sequence                    = initObj.workflow;
+
+            try {
+                delete initObj.workflow;
+            } catch (e) {
+                initObj.workflow                = undefined;
+            }
+        }
+
         if (initObj.workflow) {
 
             this.importWorkflow(initObj);
@@ -226,6 +235,7 @@ if (typeof MINIFIED === 'undefined'){
                 'report'
             ];
 
+            /* Loop through valid functions to see if any have been defined in initObj */
             for (var i=0;i<validFunctions.length;i++) {
 
                 thisFunc                        = validFunctions[i];
@@ -234,14 +244,23 @@ if (typeof MINIFIED === 'undefined'){
                     this.log('importFunctions', '--> Importing ' + thisFunc + '() function', null, 'DEBUG');
                 }
 
+                /* If function has been defined in initObj, use it to override default function */
                 if (typeof initObj[thisFunc] === 'function') {
 
-                    this[thisFunc]              = initObj[thisFunc];
+                    /* If the function is a pubsub function, override in pubsub object */
+                    if (thisFunc in this.pubsub){
+                        this.pubsub[thisFunc]   = initObj[thisFunc];
+                    }
+                    /* Otherwise, override in Turbine itself */
+                    else {
+                        this[thisFunc]          = initObj[thisFunc];
+                    }
 
                     importedFunctions[thisFunc] = true;
                 }
             }
 
+            /* Verifies that all required functions have been defined, or that jQuery exists so defaults can be used */
             if (!$ && (!('publish' in importedFunctions) || !('listen' in importedFunctions) || !('remove' in importedFunctions))) {
 
                 var errorMsg                    = '[' + this.name + '.importFunctions()] You must either define publish(), listen(), and remove() functions via the initObj passed to the Turbine constructor, or you must include jQuery in the page.';
@@ -358,7 +377,7 @@ if (typeof MINIFIED === 'undefined'){
         },
 
         /**
-         * Imports sequence steps, converting them to a regular workflow.
+         * Imports sequence steps, converting them to a regular workflow queries and responses.
          * Each step is re-named to a query named like "SEQUENCE_STEP_1", "SEQUENCE_STEP_2", etc.
          * with the sequence step body converted to the "default" response for the query.
          *
@@ -368,7 +387,7 @@ if (typeof MINIFIED === 'undefined'){
          */
         importSequenceSteps : function(sequence,prefix) {
 
-            prefix                              = (typeof prefix === 'string') ? prefix + '_' : '';
+            prefix                              = (typeof prefix === 'string') ? prefix + '__' : '';
 
             var workflow                        = {};
             var len                             = sequence.length;
@@ -473,6 +492,7 @@ if (typeof MINIFIED === 'undefined'){
                 }
             }
 
+            /* Verify that at least one query has been defined */
             if (totalQueries === 0) {
 
                 var errorMsg                    = '[' + this.name + '.importQueries()] The workflow has no queries to import';
