@@ -1004,7 +1004,7 @@ By default, Turbine will use `jQuery.on()` to listen for events. If you would ra
 
 Turbine will pass your `listen` method two arguments: 
 
-* `message` *[String] Event to listen for*
+* `message` *[String or Array] Event(s) to listen for*
 * `handler` *[Function] Function to call when event is triggered*
 
 When the `handler` is triggered, it will be passed two arguments:
@@ -1024,7 +1024,7 @@ By default, Turbine will use `jQuery.off()` to remove listeners. If you would ra
 
 Turbine will pass your `remove` method one argument: 
 
-* `message` *[String] Event for which listeners should be removed*
+* `message` *[String or Array] Event(s) for which listeners should be removed*
 
 Like `publish` and `listen`, you may need to wrap your own method in a custom function to translate these arguments into something your listener understands.
 
