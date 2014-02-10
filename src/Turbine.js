@@ -416,7 +416,7 @@ if (typeof MINIFIED === 'undefined'){
 
 
                 /* Name all queries in sequence as "SEQUENCE_STEP_1", "SEQUENCE_STEP_2", etc.
-                 * Only the "default" response body is needed since all query responses default to "default" */
+                 * Only the "default" action is needed since all query responses default to "default" */
                 workflow[stepBaseName + currentStepCount]    = { default : query };
             }
 
@@ -595,7 +595,7 @@ if (typeof MINIFIED === 'undefined'){
                 }
             }
 
-            /* Update response body so it points to first step in sequence */
+            /* Update action object so it points to first step in sequence */
             workflow[query][response] = {
                 then : firstStepName
             };
@@ -836,7 +836,7 @@ if (typeof MINIFIED === 'undefined'){
 
             this.clearTimers();
 
-            /* If the query is an object literal, it means it's a nested response body */
+            /* If the query is an object literal, it means it's a nested action object */
             if (this.utils.isObjLiteral(query)){
                 this.processResponse('__nested',query);
                 return null;
@@ -871,16 +871,16 @@ if (typeof MINIFIED === 'undefined'){
             }
 
             var responseName                    = this.responses[query];
-            var responseObj                     = this.workflow[query][responseName];
+            var actionObj                       = this.workflow[query][responseName];
 
-            /* If the response doesn't exist, check if a default response has been specified */
-            if (!responseObj) {
+            /* If the action doesn't exist, check if a default action has been specified */
+            if (!actionObj) {
 
                 responseName                    = 'default';
-                responseObj                     = this.workflow[query][responseName];
+                actionObj                       = this.workflow[query][responseName];
 
-                /* If there's no default response specified either, then there's nothing else we can do */
-                if (!responseObj) {
+                /* If there's no default action specified either, then there's nothing else we can do */
+                if (!actionObj) {
 
                     this.report({
                         handle                  : 'RESPONSE_DOES_NOT_EXIST',
@@ -892,12 +892,12 @@ if (typeof MINIFIED === 'undefined'){
             }
 
             if (!MINIFIED){
-                this.log('exec', 'Executing the ' + responseName + ' response to the ' + query + ' query', responseObj, 'DEBUG');
+                this.log('exec', 'Executing the ' + responseName + ' response to the ' + query + ' query', actionObj, 'DEBUG');
             }
 
-            responseObj.responseName            = responseName;
+            actionObj.responseName              = responseName;
 
-            this.processResponse(query,responseObj);
+            this.processResponse(query,actionObj);
         },
 
         /**
@@ -940,6 +940,11 @@ if (typeof MINIFIED === 'undefined'){
                     this.publishNow(query,response);
                 }
 
+                /* If "then" is an array, turn it into a nested action object */
+                if (this.utils.isArray(response.then)){
+                    response.then                           = this.nestActionSequence(response);
+                }
+
                 /* If we have "publish" with "waitFor", then publish the message and wait for a response
                  * before continuing. */
                 if (response.publish && response.waitFor && !response.isPublishCallback) {
@@ -973,7 +978,7 @@ if (typeof MINIFIED === 'undefined'){
                     /* Otherwise, "then" query gets executed immediately */
                     else if (response.then){
 
-                        if (this.isEarlierQuery(response.then,this.currentQuery)){
+                        if (this.isEarlierQuery(this.currentQuery,response.then)){
                             this.rewind(this.currentQuery,response.then);
                         }
 
@@ -1009,6 +1014,87 @@ if (typeof MINIFIED === 'undefined'){
         },
 
         /**
+         * Converts a response.then sequence into a series of nested
+         * 'then' actions, so Turbine can execute them sequentially.
+         *
+         * For example:
+         *
+         * then : [
+         *     {
+         *         publish : {
+         *             message : 'Message1'
+         *         },
+         *         then : '@next'
+         *     },
+         *     {
+         *         publish : {
+         *             message : 'Message2'
+         *         },
+         *         then : '@next'
+         *     },
+         *     {
+         *         publish : {
+         *             message : 'Message3'
+         *         },
+         *         then : 'stop.'
+         *     }
+         * ]
+         *
+         * ... becomes ...
+         *
+         * then : {
+         *     publish : {
+         *         message : 'Message1'
+         *     },
+         *     then : {
+         *         publish : {
+         *             message : 'Message2'
+         *         },
+         *         then : {
+         *             publish : {
+         *                 message : 'Message3'
+         *             }
+         *             then : 'stop.'
+         *         }
+         *     }
+         * }
+         *
+         * @param response The response containing the sequence in the 'then' property
+         * @returns {*} Object containing nested actions
+         */
+        nestActionSequence : function(response){
+
+            var nestedSteps                     = null;
+            var thisStep                        = null;
+
+            /* Loop through steps in sequence */
+            for (var i=0;i<response.then.length;i++){
+
+                /* Create object to hold nested steps */
+                if (!nestedSteps){
+
+                    nestedSteps                 = response.then[i];
+                    thisStep                    = response.then[i];
+
+                } else {
+
+                    thisStep                    = nestedSteps.then;
+                }
+
+                /* Set the next step in the sequence as an action for the
+                 * then property of the current action to execute */
+                if ((i+1) < response.then.length){
+
+                    if (thisStep.then === '@next'){
+                        thisStep.then           = response.then[i+1];
+                    }
+                }
+            }
+
+            return nestedSteps;
+        },
+
+        /**
          * Reports an issue from the workflow
          *
          * @param query The query being executed
@@ -1024,7 +1110,7 @@ if (typeof MINIFIED === 'undefined'){
                 name                            : this.name,
                 query                           : query,
                 response                        : responseName,
-                responseObj                     : this.workflow[query][responseName],
+                actionObj                       : this.workflow[query][responseName],
                 timestamp                       : new Date().getTime()
             };
 
@@ -1076,7 +1162,7 @@ if (typeof MINIFIED === 'undefined'){
             /* If the limit is null, repeat query indefinitely */
             if (response.repeat.limit === null) {
 
-                /* If we're in a nested response body, then the nested response should be queued instead of the query */
+                /* If we're in a nested action object, then the nested action should be queued instead of the query */
                 if (query === '__nested'){
                     query = response;
                 }
@@ -1105,7 +1191,7 @@ if (typeof MINIFIED === 'undefined'){
                         response.waitFor        = response.waitFor.slice(0,response.waitFor.length - this.numAlwaysWaitFor);
                     }
 
-                    /* If we're in a nested response body, then the nested response should be queued instead of the query */
+                    /* If we're in a nested action object, then the nested action should be queued instead of the query */
                     if (query === '__nested'){
                         query = response;
                     }
@@ -1161,10 +1247,10 @@ if (typeof MINIFIED === 'undefined'){
          * Checks whether the new query is earlier than the current query
          * (e.g. we're going backwards in the workflow)
          *
-         * @param nextQuery The query to execute next
          * @param currentQuery The query we're currently executing
+         * @param nextQuery The query to execute next
          */
-        isEarlierQuery : function(nextQuery,currentQuery) {
+        isEarlierQuery : function(currentQuery,nextQuery) {
 
             if (currentQuery === nextQuery) {
                 return false;
@@ -1549,7 +1635,7 @@ if (typeof MINIFIED === 'undefined'){
 
             this.waitingFor                     = null;
 
-            if (this.isEarlierQuery(this.nextQuery,this.currentQuery)){
+            if (this.isEarlierQuery(this.currentQuery,this.nextQuery)){
                 this.rewind(this.currentQuery,this.nextQuery);
             }
 
