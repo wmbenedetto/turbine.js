@@ -11,7 +11,7 @@ if (typeof MINIFIED === 'undefined'){
  *
  * Turbine.js : The JavaScript Workflow Engine
  *
- * Copyright (c) 2012 Warren Benedetto <warren@transfusionmedia.com>
+ * Copyright (c) 2012-2014 Warren Benedetto <warren@transfusionmedia.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the "Software"),
