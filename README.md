@@ -4,7 +4,11 @@ Turbine is a JavaScript workflow engine. It vastly simplifies the development, d
 
 ## Why Turbine?
 
-Turbine is the ideal solution for apps (or parts of apps) with multi-step processes involving many possible branches, sub-flows, or permutations. Examples include:
+Turbine is the ideal solution for apps (or parts of apps) with multi-step processes involving many possible branches, sub-flows, or permutations. If your application logic requires a Visio flow diagram to explain it, then Turbine may be right for you. 
+
+In fact, a good way to think of Turbine is as a linear expression of a flow diagram.
+
+Examples include:
 
 * Signup forms
 * Login forms
@@ -14,7 +18,7 @@ Turbine is the ideal solution for apps (or parts of apps) with multi-step proces
 * Asset creation (i.e. upload photo -> add filter -> add caption -> tag friends -> share)
 * etc.
 
-The programming of these types of apps usually involves a tangled nightmare of conditionals, switches, callbacks, promises, and other strands of spaghetti code. 
+The programming of these types of apps can often create a tangled nightmare of conditionals, switches, callbacks, promises, and other strands of spaghetti code. 
 
 This tightly coupled code makes it almost impossible to A/B/n test different flows or variations -- any attempt to do so usually makes the problem even worse. It is also very difficult to follow the program logic to trace all the possible flows through the code.
 
@@ -48,9 +52,124 @@ Or you can download the latest tag from https://github.com/wmbenedetto/turbine.j
 
 In order to use Turbine, it's important to first define some key concepts. Once we have a common vocabulary and general conceptual understanding established, we can then begin talking about how you can use Turbine to power your app.
 
+### Sequence
+
+The simplest form of workflow is a sequence. A sequence is simply a series of linear steps, executed in order. There's no complex branching logic involved. The flow diagram is a straight line.
+
+For sequences, the relationship between Turbine and your app is like one between a general and a soldier. Turbine tells your app what to do, your app lets Turbine know then it's done, and Turbine tells it what to do next. The instructions bounce back and forth like this until the sequence is complete.
+
+For example, your app may have a simple "Get Started" tour that introduces users to a few new features. The flow might go something like this.
+
+>**Turbine:** Show Step One of the tour. Let me know when the user clicks Next.
+> 
+>*Your app displays Step One of the tour. The user clicks the Next button.*
+>
+>**Your app** Sir! The user clicked Next, sir! 
+>
+>**Turbine** Good. Show Step Two. Let me know when the user clicks Next.
+>
+>*Your app displays Step Two of the tour. The user clicks the Next button.*
+>
+>**Your app** Sir! The user clicked Next, sir! 
+>
+>**Turbine** Excellent. Show Step Three. Let me know when the user clicks Next.
+>
+>*Your app displays Step Three of the tour. The user clicks the Next button.*
+>
+>**Your app** Sir! The user clicked Next, sir! 
+>
+>**Turbine** Nice work, solider! We're done here!
+
+A sequence is defined as an array of object literals called "action objects". Let's take a look at how the conversation above is expressed as a sequence.
+
+```javascript
+var workflow = [
+    {
+        publish : {
+            message : 'Tour.stepOne.show'
+        },
+        waitFor : 'Tour.button.clicked.NEXT',
+        then : '@next'
+    },
+    {
+        publish : {
+            message : 'Tour.stepTwo.show'
+        },
+        waitFor : 'Tour.button.clicked.NEXT',
+        then : '@next'
+    },
+    {
+        publish : {
+            message : 'Tour.stepThree.show'
+        },
+        waitFor : 'Tour.button.clicked.NEXT',
+        then : 'stop.'
+    }
+];
+```
+With a few comments added, we can see how the conversation flows between Turbine and your app: 
+
+```javascript
+var workflow = [
+    {
+        // Turbine: Show Step One of the tour.
+        publish : {
+            message : 'Tour.stepOne.show'
+        },
+        // Turbine: Let me know when the user clicks Next.
+        waitFor : 'Tour.button.clicked.NEXT',
+
+        // Your app is listening for a Tour.stepOne.show message. It knows to handle
+        // that by displaying the first screen of the tour. The user clicks a Next button.
+        // This publishes a Tour.button.clicked.NEXT message. Which is equivalent to:
+        //
+        // Your app: Sir! The user clicked Next, sir!
+        // 
+        // Via the @next shortcut, Turbine moves onto its next directive.
+        then : '@next'
+    },
+    {
+        // Turbine: Show Step Two of the tour.
+        publish : {
+            message : 'Tour.stepTwo.show'
+        },
+        // Turbine: Let me know when the user clicks Next.
+        waitFor : 'Tour.button.clicked.NEXT',
+    
+        // Your app is listening for a Tour.stepTwo.show message. It knows to handle
+        // that by displaying the second screen of the tour. The user clicks a Next button.
+        // This publishes a Tour.button.clicked.NEXT message. Which is equivalent to:
+        //
+        // Your app: Sir! The user clicked Next, sir!
+        // 
+        // Via the @next shortcut, Turbine moves onto its next directive.
+        then : '@next'
+    },
+    {
+        // Turbine: Show Step Three of the tour.
+        publish : {
+            message : 'Tour.stepThree.show'
+        },
+        // Turbine: Let me know when the user clicks Next.
+        waitFor : 'Tour.button.clicked.NEXT',
+
+        // Your app is listening for a Tour.stepThree.show message. It knows to handle
+        // that by displaying the third screen of the tour. The user clicks a Next button.
+        // This publishes a Tour.button.clicked.NEXT message. Which is equivalent to:
+        //
+        // Your app: Sir! The user clicked Next, sir!
+        // 
+        // Via the stop. query, Turbine knows that the sequence is complete
+        
+        // Turbine: Nice work, solider! We're done here!
+        then : 'stop.'
+    }
+];
+```
+
 ### Workflow
 
-The workflow is the jet fuel that powers Turbine. It's an expressive, declarative syntax for defining the program flow of your application. It allows you to define all the logical branching of your app in a single document, in a format that is both human- and machine-readable. 
+The workflow is the jet fuel that powers Turbine. It's an expressive syntax for defining the program flow of your application. It allows you to define all the logical branching of your app in a single document, in a format that is both human- and machine-readable. 
 
 Turbine workflows are declarative -- they are only concerned with *what* your app does, not *how* it does it. Although workflows are written in JavaScript, they should not contain any functional logic. They should be serializable to JSON -- and deserializable from JSON --  without any ill effects.
 
@@ -82,7 +201,7 @@ A workflow is essentially a series of questions (queries) and answers (responses
 >
 >**Turbine:** Great! Let him in. We're done!
 
-Now let's look at the same "conversation" expressed as a workflow:
+Now let's look at the same conversation expressed as a workflow:
 
 ```javascript
 var workflow = {
@@ -258,6 +377,32 @@ When Turbine executes a query and 1.) no query function has been defined, and 2.
 
 ---
 
+### Actions
+
+Actions tell Turbine what to do when a particular response has been received.
+
+Actions are defined as object literals, with a variety of special properties that Turbine can execute.
+
+In the example below, `canAttemptLogin` is the query, `yes` is the response, and the object literal that is the value of the `yes` property is the action.
+
+```javascript
+var workflow = {
+            
+    canAttemptLogin : {
+        yes : {
+            publish : {
+                message : 'LoginForm.show'
+            },
+            waitFor : 'LoginForm.submit',
+            then : 'isLoginValid'
+        }
+    }
+}
+```
+Because the bulk of Turbine's functionality is contained in actions, we'll wait a little longer before delving deeper into what properties an object can contain. If you're curious, you can jump ahead to the [Elements of a workflow](#elements-of-a-workflow) section for more info.
+
+---
+
 ### Resets
 
 Workflows don't always move inexorably forward in a straight line. Sometimes they need to backtrack, repeat, start over, etc. When this happens, you may need to reset some of the responses you previously set.
@@ -399,7 +544,7 @@ The documentation below has more detail about what each property means, but here
 var initObj = {
     
     // REQUIRED
-    workflow    : {},           
+    workflow    : {}, // array (sequence) or object literal (workflow)           
     
     // OPTIONAL
     name        : '',           
@@ -429,7 +574,7 @@ Now let's look at what each of these properties means.
 
 ### workflow
 
-*[OBJECT] Defines the control flow of your application*
+*[ARRAY or OBJECT] Defines the control flow of your application*
 
 The workflow is the jet fuel that powers Turbine. It tells your app what to do, and where to go next after doing it.
 
@@ -621,9 +766,12 @@ By using the shortcut, your workflow doesn't need to know which query is the sta
 
 If, in the future, you add additional queries to the beginning of your checkout flow, you only need to change the definition of the `checkout` shortcut in the config.
 
-#### @start
+#### Special shortcuts
 
-You can use any arbitrary string for a shortcut name, but there's one that has special meaning: **@start**. If you define a `start` shortcut, Turbine will use that as the first query to execute when Turbine is started.
+You can use any arbitrary string for a shortcut name, with the exception of a few that have special meanings: 
+
+* **@start** If you define a `start` shortcut in your `initObj`, Turbine will automatically use that as the first query to execute when Turbine is started.
+* **@next** When defining a sequence, the `@next` shortcut tells Turbine to execute the next step in the sequence. There is no need to define `@next` in your `initObj`.
 
 ---
 
@@ -651,8 +799,10 @@ workflow : {
         yes : {
             timeout : {
                 after : '$cartTimeout',
-                publish : 'Cart.timeout.expired',
-                then : 'stop.'
+                then : {
+                    publish : 'Cart.timeout.expired',
+                    then : 'stop.'
+                }
             }
         },
         no : {
@@ -747,22 +897,24 @@ var initObj = {
 #### timeout  
 The `timeout` property allows you to define a global timeout for the entire workflow. 
 
-For example, you may want to ask the user if they're still there when there has been no activity for a few minutes. Or you may want to raise an error if you app has become unresponsive for some reason. The format of the `timeout` property is the same as when  `timeout` is defined in a response (see [docs](#timeout-1) below).
+For example, you may want to ask the user if they're still there when there has been no activity for a few minutes. Or you may want to raise an error if you app has become unresponsive for some reason. The format of the `timeout` property is the same as when  `timeout` is defined in an action object (see [docs](#timeout-1) below).
 
 ```javascript
 timeout : {
     after : 300000,
-    publish : {
-        message : "Cart.issue.detected.GLOBAL_TIMEOUT"
-    },
-    then : "stop."
+    then : {
+        publish : {
+            message : "Cart.issue.detected.GLOBAL_TIMEOUT"
+        },
+        then : "stop."
+    }
 },
 ```
 
 #### waitFor
 The `waitFor` property defines messages for which to listen, as well as an optional `then` that tells the workflow where to go when a message is received. Whenever your app is waiting for messages, these global `waitFor` messages will be listened for as well.
 
-The format of the `waitFor` property is the same as when `waitFor` is defined in a response (see [docs](#waitfor-1) below).
+The format of the `waitFor` property is the same as when `waitFor` is defined in an action object (see [docs](#waitfor-1) below).
 
 #### using
 
@@ -822,9 +974,9 @@ By default, Turbine will use `jQuery.trigger()` to publish events. If you would 
 
 Turbine will pass your `publish` method two arguments: 
 
-* `message` *[String] Event to publish*
-* `payload` *[Object] Optional data object*
-
+* `message`  *[String] Event to publish*
+* `payload`  *[Object] Optional data object*
+ 
 Your events library may not be expecting those arguments, or in that order, so you may have to wrap your library's function in your own function that translates those arguments into something your library understands.
 
 For example, maybe your fictional PubSub library requires a single object literal defining `event` and `data` instead of two arguments for `message` and `payload`. Then you might wrap it like this:
@@ -832,7 +984,7 @@ For example, maybe your fictional PubSub library requires a single object litera
 ```javascript
 var initObj = {
     
-    publish : function(message,payload){
+    publish : function(message,payload,callback){
         
         yourPubSub.trigger({
             event : message,
@@ -929,9 +1081,9 @@ Your `report` function would be passed whatever is defined in the workflow. You 
 
 ## Elements of a workflow
 
-A workflow is an object literal defined in the init object passed to the Turbine constructor. It is the only mandatory property of the init object.
+A workflow is an array (for a sequence) or an object literal defined in the init object passed to the Turbine constructor. It is the only mandatory property of the init object.
 
-The workflow is essentially a dialog between Turbine and your app. Turbine executes a **query** and receives a **response**. That response tells Turbine what to do next, and which query to execute next.
+The workflow is essentially a dialog between Turbine and your app. Turbine executes a **query** and receives a **response**. That response tells Turbine which action object to execute, which in turn tells Turbine which query to execute next.
 
 ```javascript
 isUserLoggedIn : {
@@ -948,7 +1100,7 @@ In this example:
 
 * `isUserLoggedIn` is the **query**
 * `yes` and `no` are the **responses**
-* The object literal values of the `yes` and `no` responses are the **response bodies**
+* The object literal values of the `yes` and `no` responses are the **action objects**
 
 ---
 
@@ -991,15 +1143,15 @@ In this example, if the `whichError` query doesn't return either INVALID_EMAIL o
 
 ---
 
-### Response bodies
+### Actions
 
-Once a query has been executed and a response has been received, we need to know what to do next. This is expressed in the response body.
+Once a query has been executed and a response has been received, Turbine needs to know what to do next. This is expressed in an action object.
 
-We'll get into details about all the things that can go into response bodies in a minute. For now, let's just focus on the most important property: `then`. 
+We'll get into details about all the things that can go into actions in a minute. For now, let's just focus on the most important property: `then`. 
 
 #### then
 
-The `then` property tells Turbine which query to execute next. When you see it in action, it's pretty self-explanatory:
+At its simplest, the `then` property tells Turbine which query to execute next. When you see it in context, it's pretty self-explanatory:
 
 ```javascript
 isUserLoggedIn : {
@@ -1039,11 +1191,11 @@ Turbine's expressive workflow syntax makes it simple to see how the program will
 
 ##### `then` is always required (except when it's not)
 
-Because `then` tells your workflow where to go next, it is required for every response body.
+Because `then` tells your workflow where to go next, it is required for every action object.
 
 (There's a slight caveat to that rule when using the `repeat` or `delay` property -- more on that later.)
 
-If you leave `then` out, your app will basically freeze -- Turbine will get to the response that has no `then` in the response body, and it won't know where to go from there. Instead, it will throw an exception.
+If you leave `then` out, your app will basically freeze -- Turbine will get to the response that has no `then` in the action object, and it won't know where to go from there. Instead, it will throw an exception.
 
 ##### Special values : `stop.` and `kill!`
 
@@ -1087,11 +1239,57 @@ doesAccountExist : {
 }
 ```
 
+##### Advanced `then` usage
+
+There are more complex usages of `then`, but it's hard to explain without first understanding more details about how workflows work. Let's table the idea for a while. We'll come back to it in a minute.
+
+---
+
+### Action sequences
+
+Sometimes, you may want to execute a sequence of actions in response to a single query. To do this, you can define a response's action as a sequence: an array of action objects.
+
+Just like with sequence workflows, the `then` property can be set to the special shortcut `@next` to tell Turbine to execute the next action in the sequence.
+
+```javascript
+doesAccountExist : {
+    yes : {
+        // make the user log in
+    },
+    // Because the value of the no property is an array, Turbine knows it's a sequence
+    no : [
+        {
+            publish : {
+                message : 'App.view.show.SIGNUP'
+            },
+            then : '@next'
+        },
+        {
+            publish : {
+                message : 'App.background.update.N00B'
+            },
+            then : '@next'
+        },
+        {
+            publish : {
+                message : 'App.header.hide'
+            },
+            then : 'stop.'
+        }
+    ]
+}
+```
+---
+
+### Action object properties
+
+In addition to `then`, there are a number of other properties that can be defined in an action object. Together, these properties tell Turbine what to do when it receives a particular response.
+
 #### publish
 
 Turbine is an event-driven workflow engine, so it communicates with your app by publishing messages from the workflow using the `publish` function defined in your initObj, or `jQuery.trigger()` by default.
 
-To tell Turbine to publish a message, you define a `publish` object in the response body. This object has two properties: 
+To tell Turbine to publish a message, you define a `publish` object in the action object. This object has two properties: 
 
 * `message` *[String or Array] The message to publish, or an array of messages to publish*
 * `using` *[Object] Optional data object to accompany published message*
@@ -1160,9 +1358,11 @@ doesAccountExist : {
 
 Of course, publishing a message doesn't do much if there's nothing listening for it in your app. The expectation is that when your workflow publishes `App.view.show`, your app is listening for that message. Your app can then use the values from the `using` object to determine which view to show, and which content to use when showing it.
 
+---
+
 #### waitFor
 
-In the `isUserOver18` query above, both responses have `then : 'stop.'` in their response bodies. In those cases, after the workflow publishes its message, it's done. There's nothing left to do after the appropriate view is shown.
+In the `isUserOver18` query above, both responses have `then : 'stop.'` in their action objects. In those cases, after the workflow publishes its message, it's done. There's nothing left to do after the appropriate view is shown.
 
 But what about in the `doesAccountExist` query? We want the user to either log in or create an account, so we published an `App.view.show` message from your workflow, your app was listening for it, it showed the view ... now what?
 
@@ -1170,7 +1370,7 @@ We need a way for the app to tell Turbine that it is done doing whatever it need
 
 The `waitFor` property accepts either a message or array of messages for which Turbine should listen. Once Turbine receives a message it's waiting for, it continues where it left off, going wherever the `then` property tells it to go.
 
-Let's add some `waitFor` and `then` properties to the `doesAccountExist` response bodies. We'll also need to add two new queries: `isLoginValid` and `isAccountValid`:
+Let's add some `waitFor` and `then` properties to the `doesAccountExist` action objects. We'll also need to add two new queries: `isLoginValid` and `isAccountValid`:
 
 ```javascript
 isUserLoggedIn : {
@@ -1256,7 +1456,7 @@ isAccountValid : {
 
 Let's assume our user has an account, so we showed him a login form. When that form is submitted, your app publishes a `App.login.submitted` message. Since Turbine is waiting for that message, it follows then `then` property to `isLoginValid`.
 
-##### Multiple `then` options
+##### Different `then` options
 
 Sometimes you might want your app to execute a different query depending on which `waitFor` message it receives. To do this, you can specify `waitFor` as an object or array of objects containing two properties:
 
@@ -1375,9 +1575,187 @@ In the example above, the `App.button.clicked.YES` and `App.button.clicked.NO` w
 
 While this approach technically will work, it is not recommended -- if you're using multiple `then` options, then each `waitFor` message really should have its own `then`, for clarity's sake.
 
+---
+
+#### Advanced `then` options
+
+Now that we understand a little more about publishing and waiting for message, we can revisit `then` to see how we can use it in more advanced ways.
+
+##### Nested `then` actions
+
+While the simplest use of `then` is to tell Turbine which query to execute next, that may not always make sense in the context of your application. 
+
+For example, what if you don't have a query to execute? What if you just want Turbine to do something without querying your app every time? To do that, you can actually assign additional action objects to the `then` property.
+
+Let's take another look at the `doesAccountExist` query. The original `no` response assumes that the app will be showing a single `createAccount` view.
+
+```javascript
+doesAccountExist : {
+    yes : {
+        // make the user log in
+    },
+    no : {
+        // ask the user to create an account
+        publish : {
+            message : 'App.view.show',
+            using : {
+                view : 'createAccount'
+            }
+        },
+        waitFor : 'App.account.created',
+        then : 'isAccountValid'
+    }
+}
+```
+
+But what if the account creation process is a multi-step process? *Without* nesting `then` actions, it might look like this:
+
+```javascript
+doesAccountExist : {
+    yes : {
+        // make the user log in
+    },
+    no : {
+        // show the first step of the signup process
+        publish : {
+            message : 'App.view.show',
+            using : {
+                view : 'stepOne'
+            }
+        },
+        waitFor : 'App.stepOne.complete',
+        then : 'isStepOneComplete'
+    }
+},
+isStepOneComplete : {
+    yes : {
+        // show the second step of the signup process
+        publish : {
+            message : 'App.view.show',
+            using : {
+                view : 'stepTwo'
+            }
+        },
+        waitFor : 'App.stepTwo.complete',
+        then : 'isStepTwoComplete'
+    }
+},
+isStepTwoComplete : {
+    yes : {
+        // show the third step of the signup process
+        publish : {
+            message : 'App.view.show',
+            using : {
+                view : 'stepThree'
+            }
+        },
+        waitFor : 'App.stepThree.complete',
+        then : 'isAccountValid'
+    }
+}
+```
+
+Ugh. That's really inefficient. We're waiting for a message to say a step is complete, we get that message, then we have to immediately query the app to see if the step is complete. Why?! We already know it's complete. The message just told us.
+
+Instead, let's get right to the action. Literally. 
+
+Instead of defining `then` as a string referencing the next query to execute, you can instead define it as an action object. That action object can itself contain a `then` property, which can also be defined as an action object, and so on. 
+
+This allows you to immediately execute the next action(s), instead of requiring an unnecessary roundtrip to query your app.
+
+```javascript
+doesAccountExist : {
+    yes : {
+        // make the user log in
+    },
+    no : {
+        // show the first step of the signup process
+        publish : {
+            message : 'App.view.show',
+            using : {
+                view : 'stepOne'
+            }
+        },
+        waitFor : 'App.stepOne.complete',
+        then : {
+            // show the second step of the signup process
+            publish : {
+                message : 'App.view.show',
+                using : {
+                    view : 'stepTwo'
+                }
+            },
+            waitFor : 'App.stepTwo.complete',
+            then :  {
+                // show the third step of the signup process
+                publish : {
+                    message : 'App.view.show',
+                    using : {
+                        view : 'stepThree'
+                    }
+                },
+                waitFor : 'App.stepThree.complete',
+                then : 'isAccountValid'
+            }
+        }
+    }
+}
+```
+
+##### `then` sequences
+
+Nested `then` actions are nice if you don't have too many actions to nest. However, once you get past 3-4 consecutive actions, the nesting can be kind of obnoxious. In cases like that, you can also define `then` as a sequence of actions.
+
+```javascript
+doesAccountExist : {
+    yes : {
+        // make the user log in
+    },
+    no : {
+        
+        then : [
+            // show the first step of the signup process
+            {
+                publish : {
+                    message : 'App.view.show',
+                    using : {
+                        view : 'stepOne'
+                    }
+                },
+                waitFor : 'App.stepOne.complete',
+                then :  '@next'
+            },
+            // show the second step of the signup process
+            {
+                publish : {
+                    message : 'App.view.show',
+                    using : {
+                        view : 'stepTwo'
+                    }
+                },
+                waitFor : 'App.stepTwo.complete',
+                then :  '@next'
+            },
+            // show the third step of the signup process
+            {
+                publish : {
+                    message : 'App.view.show',
+                    using : {
+                        view : 'stepThree'
+                    }
+                },
+                waitFor : 'App.stepThree.complete',
+                then :  'isAccountValid'
+            }
+        ]
+    }
+}
+```
+---
+
 #### repeat
 
-Sometimes you may want to repeat the same query over and over again, such as when you are polling a server for a particular response. To do this, you add a `repeat` object in the response body. 
+Sometimes you may want to repeat the same query over and over again, such as when you are polling a server for a particular response. To do this, you can add a `repeat` object in the action object. 
 
 The `repeat` object is used in lieu of `then` -- by using `repeat`, you are implicitly saying "execute this query, *then* execute this query again".
 
@@ -1385,7 +1763,7 @@ The `repeat` object contains one required property:
 
 * `limit` *[Number or null] The maximum times the query will be repeated. If null, the query will repeat infinitely.*
 
-In addition, the `repeat` object can contain anything that a response body can contain: `publish`, `waitFor`, `then`, etc. If the limit is reached, the `repeat` object is processed as a response body.
+In addition, unless the limit is `null`, the `repeat` object should contain a `then` property. This tells Turbine what to do once the limit has been reached. The `then` can either point to the next query to be executed, or it can contain an action object of its own.
 
 ```javascript
 isUploadComplete : {
@@ -1393,13 +1771,15 @@ isUploadComplete : {
         waitFor : 'App.upload.updated',
         repeat : {
             limit : 100,
-            publish : {
-                message : 'App.upload.failed',
-                using : {
-                    reason : 'UPLOAD_CHECK_LIMIT_EXCEEDED'
-                }
-            },
-            then :  'stop.'
+            then : {
+                publish : {
+                    message : 'App.upload.failed',
+                    using : {
+                        reason : 'UPLOAD_CHECK_LIMIT_EXCEEDED'
+                    }
+                },
+                then :  'stop.'
+            }
         }
     },
     yes : {
@@ -1410,33 +1790,37 @@ isUploadComplete : {
 
 In the example above, Turbine waits for an `App.upload.updated` message. When it gets one, it repeats the `isUploadComplete` query. If the response is still `no`, then it again waits for `App.upload.updated`.
 
-This continues until `isUploadComplete` is `yes`, or the query repeats 100 times. If the limit is reached, then Turbine executes the repeat object as a response body, publishing `App.upload.failed` and then stopping.
+This continues until `isUploadComplete` is `yes`, or the query repeats 100 times. If the limit is reached, then Turbine executes the `then` property, publishing `App.upload.failed` and then stopping.
+
+---
 
 #### timeout
 
 One of the drawbacks of an event-driven workflow engine is that if it's waiting for a message that never comes, it is basically stuck. To help avoid that situation, a `timeout` object is available.
 
-The `timeout` object allows you to specify an alternate response body to process after a certain amount of time elapses. It contains one required property:
+The `timeout` object allows you to specify an alternate action object to process after a certain amount of time elapses. It contains one required property:
 
 * `after` *[Number] The number of milliseconds after which the timeout will fire*
 
-In addition, the `timeout` object can contain anything that a response body can contain: `publish`, `waitFor`, `then`, etc. If the timeout is exceeded, the `timeout` object is processed as a response body.
+In addition, the `timeout` object should contain a `then` property. This tells Turbine what to do once the timeout has been exceeded. The `then` can either point to the next query to be executed, or it can contain an action object of its own.
 
 ```javascript
 isTransactionComplete : {
     no : {
         waitFor : 'App.transaction.completed',
+        then : 'isTransactionComplete',
         timeout : {
             after : 300000,
-            publish : {
-                message : 'App.transaction.failed',
-                using : {
-                    reason : 'TIMEOUT_EXCEEDED'
-                }
-            },
-            then :  'stop.'
-        },
-        then : 'isTransactionComplete'
+            then : {
+                publish : {
+                    message : 'App.transaction.failed',
+                    using : {
+                        reason : 'TIMEOUT_EXCEEDED'
+                    }
+                },
+                then :  'stop.'
+            }
+        }
     },
     yes : {
         // display Done message
@@ -1446,32 +1830,36 @@ isTransactionComplete : {
 
 In the example above, Turbine is waiting for an `App.transaction.complete` message. If it doesn't receive it after 300000 milliseconds (5 mins), it publishes an `App.transaction.failed` message, then stops.
 
-Notice that the `no` response body still has its own `then` value -- that is required so Turbine knows where to go if it *does* receive the `App.transaction.complete` message before the timeout.
+Notice that the `no` action object still has its own `then` value -- that is required so Turbine knows where to go if it *does* receive the `App.transaction.complete` message before the timeout.
+
+---
 
 #### delay
 
-Sometimes you may want to wait a little while before processing a response body. For example, say you're using Turbine to prototype a loading screen -- you might want to add a 3-second delay, then publish a message to move to the next screen. That's where the `delay` object is useful.
+Sometimes you may want to wait a little while before processing an action object. For example, say you're using Turbine to prototype a loading screen -- you might want to add a 3-second delay, then publish a message to move to the next screen. That's where the `delay` object is useful.
 
-The `delay` object is used in lieu of `then` -- by using `delay`, you are implicitly saying "wait for a while, *then* process the delayed response".
+The `delay` object is used in lieu of `then` -- by using `delay`, you are implicitly saying "wait for a while, *then* process the delayed action".
 
 The `delay` object contains one required property:
 
-* `for` *[Number] The number of milliseconds to wait before processing the delayed response body*
+* `for` *[Number] The number of milliseconds to wait before processing the delayed action object*
 
-In addition, the `delay` object can contain anything that a response body can contain: `publish`, `waitFor`, `then`, etc. After the delay elapses, the `delay` object is processed as a response body.
+In addition, the `delay` object should contain a `then` property. This tells Turbine what to do once the delay timer has elapsed. The `then` can either point to the next query to be executed, or it can contain an action object of its own.
 
 ```javascript
 isAppLoaded : {
     no : {
         delay : {
             for : 3000,
-            publish : {
-                message : 'App.view.show',
-                using : {
-                    view : 'appLoaded'
-                }
-            },
-            then :  'stop.'
+            then : {
+                publish : {
+                    message : 'App.view.show',
+                    using : {
+                        view : 'appLoaded'
+                    }
+                },
+                then :  'stop.'
+            }
         }
     },
     yes : {
@@ -1480,9 +1868,9 @@ isAppLoaded : {
 }
 ```
 
-In the example above, `isAppLoaded` gets a `no` response. Turbine waits for 3000 ms (3 seconds), publishes the `App.view.show` message, then stops.
+In the example above, `isAppLoaded` gets a `no` response. Turbine waits for 3000 ms (3 seconds), then publishes the `App.view.show` message, then stops.
 
-Note that `delay` doesn't have to live alone in the response body. It can co-exist with other properties as well. For example:
+Note that `delay` doesn't have to live alone in the action object. It can co-exist with other properties as well. For example:
 
 ```javascript
 isAppLoaded : {
@@ -1495,13 +1883,15 @@ isAppLoaded : {
         },
         delay : {
             for : 3000,
-            publish : {
-                message : 'App.view.show',
-                using : {
-                    view : 'appLoaded'
-                }
-            },
-            then :  'stop.'
+            then : {
+                publish : {
+                    message : 'App.view.show',
+                    using : {
+                        view : 'appLoaded'
+                    }
+                },
+                then :  'stop.'
+            }
         }
     },
     yes : {
@@ -1510,9 +1900,11 @@ isAppLoaded : {
 }
 ```
 
+---
+
 #### report
 
-In many ways, Turbine is just a big state machine. As such, it is a centralized mechanism for monitoring the state of your application. If your application is in a state that is worth reporting, you can define `report` in your response body.
+In many ways, Turbine is just a big state machine. As such, it is a centralized mechanism for monitoring the state of your application. If your application is in a state that is worth reporting, you can define `report` in your action object.
 
 The value of `report` can be anything you want: a string, an object, an array, etc.
 
@@ -1526,14 +1918,16 @@ isUploadComplete : {
         waitFor : 'App.upload.updated',
         repeat : {
             limit : 100,
-            publish : {
-                message : 'App.upload.failed',
-                using : {
-                    reason : 'UPLOAD_CHECK_LIMIT_EXCEEDED'
-                }
-            },
-            report : 'APP_UPLOAD_FAILURE',
-            then :  'stop.'
+            then : {
+                publish : {
+                    message : 'App.upload.failed',
+                    using : {
+                        reason : 'UPLOAD_CHECK_LIMIT_EXCEEDED'
+                    }
+                },
+                report : 'APP_UPLOAD_FAILURE',
+                then :  'stop.'
+            }
         }
     },
     yes : {
@@ -1543,12 +1937,12 @@ isUploadComplete : {
 ```
 
 Now `APP_UPLOAD_FAILURE` will be sent to your reporting system so you can investigate why it failed.
+.
 
 ## API
 
 The Turbine API is extremely simple -- most of the logic and complexity is implemented in the workflow itself. There are just a few methods available:
 
----
 ### start()
 
 Once an instance of Turbine has been created, calling `start()` will actually start the workflow.
@@ -1646,7 +2040,7 @@ Some things to try:
 
 To see how this all fits together as workflows, check out /examples/js/init.js. There you'll find the initObj that sets up the workflows.
 
-**IMPORTANT NOTE:** This example app is meant to show how to implement Turbine and its workflows. It is *not* a good example of how to actually write a web app. There's some kludgy code, there's HTML commingled in the JavaScript, etc. It's pretty gross.
+**IMPORTANT NOTE:** This example app is meant to show how to implement Turbine and its workflows. It is *not* a good example of how to actually write a web app. There's some kludgy code, there's HTML commingled in the JavaScript, etc. It's pretty disgusting.
 
 ## FAQ
 

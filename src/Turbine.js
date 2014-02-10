@@ -555,7 +555,7 @@ if (typeof MINIFIED === 'undefined'){
 
             /* Add counter to any repeat object */
             if (thisResponse.repeat) {
-                thisResponse.repeat.counter = 0;
+                thisResponse.repeat.counter     = 0;
             }
 
             this.replaceShortcuts(thisResponse);
@@ -953,11 +953,10 @@ if (typeof MINIFIED === 'undefined'){
 
             } else {
 
+                /* "repeat" repeats the query */
                 if (response.repeat) {
 
-                    /* "repeat" repeats query */
                     this.repeat(query,response);
-
                 }
                 /* "waitFor" tells us to wait for a message (or messages) before executing "then" query */
                 else if (response.waitFor) {
