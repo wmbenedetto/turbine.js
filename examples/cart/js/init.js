@@ -1,7 +1,7 @@
 var cartInit = {
 
     name                                        : 'CartExample',
-    logLevel                                    : 'TRACE',
+    logLevel                                    : 'DEBUG',
 
     queries : {
 
@@ -39,7 +39,7 @@ var cartInit = {
     always : {
 
         timeout : {
-            after                               : 3000,
+            after                               : 300000,
             then : {
                 publish : {
                     message                     : "CartExample|issue|detected|WORKFLOW_GLOBAL_TIMEOUT"
@@ -88,6 +88,23 @@ var cartInit = {
             using : {
                 content                         : 'emptyCart'
             }
+        },
+
+        SEQ_STEP_1 : {
+            publish : {
+                message : '---------> SequenceStep1',
+                using : {
+                    testVar : '$specialOfferDiscount'
+                }
+            },
+            then : '@next'
+        },
+
+        SEQ_STEP_2 : {
+            publish : {
+                message : '---------> SequenceStep2'
+            },
+            then : '@next'
         }
     },
 
@@ -112,12 +129,69 @@ var queries = {
             yes : {
                 waitFor : {
                     message                     : 'Cart|item|added',
-                    then                        : 'isLoggedIn'
+                    then                        : 'testSequence'
                 }
             },
             no : {
                 then                            : 'stop.'
             }
+        },
+
+        testSequence : {
+            default : [
+                '+SEQ_STEP_1',
+                '+SEQ_STEP_2',
+                {
+                    publish : {
+                        message : '---------> SequenceStep3'
+                    },
+                    then : 'testThenSequence'
+                }
+            ]
+        },
+
+        testThenSequence : {
+           default : {
+               publish : {
+                   message : '---------> ThenSequence'
+               },
+               then : [
+                   {
+                       publish : {
+                           message : '-------------> ThenSequence1'
+                       },
+                       then : '@next'
+                   },
+                   {
+                       publish : {
+                           message : '-------------> ThenSequence2'
+                       },
+                       waitFor : {
+                           message                     : 'Cart|item|added',
+                           then                        : '@next'
+                       },
+                       timeout : {
+                           after : 3000,
+                           then : '@next'
+                       }
+                   },
+                   {
+                       publish : {
+                           message : '-------------> ThenSequence3'
+                       },
+                       repeat : {
+                           limit : 5,
+                           then : '@next'
+                       }
+                   },
+                   {
+                       publish : {
+                           message : '-------------> ThenSequence4'
+                       },
+                       then : 'isLoggedIn'
+                   }
+               ]
+           }
         },
 
         isCheckoutStarted : {

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Turbine.js</title>
+    <link type="text/css" rel="stylesheet" href="../common/css/bootstrap.min.css">
+    <link type="text/css" rel="stylesheet" href="../common/css/common.css">
+    <link type="text/css" rel="stylesheet" href="css/tour.css">
+    <script language="JavaScript" type="text/javascript" src="../common/js/jquery.min.js"></script>
+    <script language="JavaScript" type="text/javascript" src="../common/js/bootstrap.min.js"></script>
+    <script language="JavaScript" type="text/javascript" src="../../src/Turbine.js"></script>
+    <script language="JavaScript" type="text/javascript" src="js/init.js"></script>
+    <script language="JavaScript" type="text/javascript" src="js/tour.js"></script>
+    <script language="JavaScript" type="text/javascript">
+
+        $(document).ready(function() {
+            // tour defined in js/tour.js
+            // tourInit defined in js/init.js
+            tour.init(tourInit);
+        });
+
+    </script>
+</head>
+<body>
+    <div id="wrapper" class="container">
+        <header>
+            <h1>Turbine Tour Example</h1>
+        </header>
+        <section id="tour-intro" class="tour-body">
+            <h3>Welcome to Turbine!</h3>
+            <p>This is a simple example of how a sequence can be used.</p>
+            <p>If you want to see what Turbine is doing under the hood, open your developer console to see the log output.</p>
+            <p>Click Start Tour, and Turbine will be started.</p>
+            <button type="button" id="start-tour-button" class="btn btn-success">Start Tour</button>
+        </section>
+        <section id="tour-step-1" class="tour-body tour-step">
+            <h3>Well, that was easy. Let's look at what happened.</h3>
+            <p>When you clicked Start Tour, Turbine was started.</p>
+            <p>The first action in the sequence published a <code>Tour|tour|started</code> message. The app was listening for that message, so it knew to hide the intro pane.</p>
+<pre>{
+    publish : {
+        message : 'Tour|tour|started'
+    },
+    then : '@next'
+}</pre>
+            <p>Turbine then advanced to the next action in the sequence, where it published a <code>Tour|step|show</code> message. The <code>using</code> object had a <code>step</code> property, which the app used to know which step to show next.</p>
+            <p>Because the action has a <code>waitFor</code> property, Turbine is now waiting for the <code>Tour|button|clicked|NEXT</code> message before moving on.</p>
+<pre>{
+    publish : {
+        message : 'Tour|step|show',
+        using : {
+            step : 1
+        }
+    },
+    waitFor : 'Tour|button|clicked|NEXT',
+    then : '@next'
+}</pre>
+            <p>When you click Next, the app will publish the <code>Tour|button|clicked|NEXT</code> message. Turbine will receive that message, and will continue to the next step in the sequence.</p>
+            <button type="button" class="btn btn-success next-button">Next</button>
+        </section>
+        <section id="tour-step-2" class="tour-body tour-step">
+            <h3>Now for something completely different ...</h3>
+            <p>Notice how there's no Next button? The tour workflow is using a timeout here. After 10 seconds, it will automatically advance to the next action in the sequence.</p>
+
+<pre>{
+    publish : {
+        message : 'Tour|step|show',
+        using : {
+            step : 2
+        }
+    },
+    timeout : {
+        after: 10000,
+        then : '@next'
+    }
+}</pre>
+            <p>Wait for it ...</p>
+        </section>
+        <section id="tour-step-3" class="tour-body tour-step">
+            <h3>BOOYA!</h3>
+            <p>The timeout elapsed, and we moved to the next action in the sequence. That published a message telling the app to show the next step: this one.</p>
+            <p>Now Turbine is waiting for another <code>Tour|button|clicked|NEXT</code> message. But there's a catch: when it gets it, it's going to execute the same action again.</p>
+            <p>Why? Because there's a <code>repeat</code> property in this action. That tells Turbine to repeat the same action up to the limit, 5 times in this case.</p>
+<pre>{
+    publish : {
+        message : 'Tour|step|show',
+        using : {
+            step : 3
+        }
+    },
+    waitFor : 'Tour|button|clicked|NEXT',
+    repeat : {
+        limit : 5,
+        then : '@next'
+    }
+}</pre>
+            <p>Go ahead and click Next to see what happens.</p>
+            <p><em>Action executed <span id="repeat-counter"></span> times</em></p>
+            <button type="button" class="btn btn-success next-button">Next</button>
+        </section>
+        <section id="tour-step-4" class="tour-body tour-step">
+            <h3>And we're done.</h3>
+            <p>After you clicked Next for the fifth time, Turbine advanced to the next action in the sequence, which published a message to show this screen.</p>
+            <p>This is the last stop in the tour. But before we end, check out your developer console. You should see an error in the console. That was generated by the <code>report</code> property in the final action. You can use <code>report</code> to pump events into your reporting system of choice, right from the workflow.</p>
+<pre>{
+    publish : {
+        message : 'Tour|step|show',
+        using : {
+            step : 4
+        }
+    },
+    report : {
+        handle : 'TOUR_EXAMPLE_FINISHED',
+        description : 'This is an example of using "report" in a workflow'
+    },
+    then : 'stop.'
+}</pre>
+            <p>This was a pretty simple example of how a sequence can be used by Turbine. There's still a lot more to learn, so head back to the main Examples page for more advanced examples.</p>
+        </section>
+    </div>
+</body>
+</html>

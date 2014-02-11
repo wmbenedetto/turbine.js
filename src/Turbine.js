@@ -83,7 +83,7 @@ if (typeof MINIFIED === 'undefined'){
      *     report      : function(){}
      * };
      *
-     * The initObj must define either a workflow OR a sequence (but not both)
+     * The initObj must define a workflow.
      *
      * It can also optionally define functions for publish(),
      * listen(), and remove(). If these aren't defined, jQuery's
@@ -240,12 +240,12 @@ if (typeof MINIFIED === 'undefined'){
 
                 thisFunc                        = validFunctions[i];
 
-                if (!MINIFIED){
-                    this.log('importFunctions', '--> Importing ' + thisFunc + '() function', null, 'DEBUG');
-                }
-
                 /* If function has been defined in initObj, use it to override default function */
                 if (typeof initObj[thisFunc] === 'function') {
+
+                    if (!MINIFIED){
+                        this.log('importFunctions', '--> Importing ' + thisFunc + '() function', null, 'DEBUG');
+                    }
 
                     /* If the function is a pubsub function, override in pubsub object */
                     if (thisFunc in this.pubsub){
@@ -300,11 +300,12 @@ if (typeof MINIFIED === 'undefined'){
 
                 thisObj                         = validObjects[i];
 
-                if (!MINIFIED){
-                    this.log('importObjects', '--> Importing ' + thisObj + ' object', null, 'DEBUG');
-                }
-
                 if (this.utils.isObjLiteral(initObj[thisObj])) {
+
+                    if (!MINIFIED){
+                        this.log('importObjects', '--> Importing ' + thisObj + ' object', null, 'DEBUG');
+                    }
+
                     this[thisObj]               = initObj[thisObj];
                 }
             }
@@ -553,9 +554,9 @@ if (typeof MINIFIED === 'undefined'){
                 this.log('importResponse', 'Importing ' + response + ' response to ' + query + ' query', thisResponse, 'TRACE');
             }
 
-            /* Add counter to any repeat object */
+            /* Add turbineRepeatCounter to any repeat object */
             if (thisResponse.repeat) {
-                thisResponse.repeat.counter     = 0;
+                thisResponse.repeat.turbineRepeatCounter     = 0;
             }
 
             this.replaceShortcuts(thisResponse);
@@ -1130,14 +1131,14 @@ if (typeof MINIFIED === 'undefined'){
          */
         repeat : function(query,response) {
 
-            if (typeof response.repeat.counter !== 'number'){
-                response.repeat.counter         = 0;
+            if (typeof response.repeat.turbineRepeatCounter !== 'number'){
+                response.repeat.turbineRepeatCounter         = 0;
             }
 
-            response.repeat.counter            += 1;
+            response.repeat.turbineRepeatCounter            += 1;
 
             if (!MINIFIED){
-                this.log('repeat', 'Repeating ' + query + ' (' + response.repeat.counter + ' of ' + (response.repeat.limit || 'unlimited') + ' max)');
+                this.log('repeat', 'Repeating ' + query + ' (' + response.repeat.turbineRepeatCounter + ' of ' + (response.repeat.limit || 'unlimited') + ' max)');
             }
 
             /* If the limit is null, repeat query indefinitely */
@@ -1151,10 +1152,10 @@ if (typeof MINIFIED === 'undefined'){
                 this.queue(response.waitFor,query);
             }
             /* If the limit has been reached, use fallback response */
-            else if (response.repeat.counter >= response.repeat.limit) {
+            else if (response.repeat.turbineRepeatCounter >= response.repeat.limit) {
 
                 if (!MINIFIED){
-                    this.log('repeat', 'Maximum repeat limit for ' + query + ' reached or exceeded (' + response.repeat.counter + ' of ' + response.repeat.limit + ' max)');
+                    this.log('repeat', 'Maximum repeat limit for ' + query + ' reached or exceeded (' + response.repeat.turbineRepeatCounter + ' of ' + response.repeat.limit + ' max)');
                 }
 
                 this.processResponse(query,response.repeat);
@@ -1173,7 +1174,7 @@ if (typeof MINIFIED === 'undefined'){
                      * every time we call queue(), and because waitFor is a reference, the global listeners end up
                      * being pushed onto the array over and over. Slicing them off here means they can be added again
                      * without stacking up. */
-                    if (this.utils.isArray(response.waitFor) && response.repeat.counter > 1) {
+                    if (this.utils.isArray(response.waitFor) && response.repeat.turbineRepeatCounter > 1) {
                         response.waitFor        = response.waitFor.slice(0,response.waitFor.length - this.numAlwaysWaitFor);
                     }
 
@@ -1269,7 +1270,7 @@ if (typeof MINIFIED === 'undefined'){
 
                 if (this.workflow[query].hasOwnProperty(response) && this.workflow[query][response].repeat) {
 
-                    this.workflow[query][response].repeat.counter = 0;
+                    this.workflow[query][response].repeat.turbineRepeatCounter = 0;
                 }
             }
 
@@ -1391,7 +1392,7 @@ if (typeof MINIFIED === 'undefined'){
                 message                         = response.publish;
             }
 
-            using.counter                       = (typeof response.repeat !== 'undefined') ? response.repeat.counter : 0;
+            using.turbineRepeatCounter          = (typeof response.repeat !== 'undefined') ? response.repeat.turbineRepeatCounter : 0;
 
             if (!MINIFIED){
                 this.log('publishAndWait', 'Publishing message and waiting for response', {

@@ -1,38 +1,3 @@
-body {
-    margin:20px;
-}
-
-a {
-    cursor:pointer;
-}
-
-#wrapper {
-    margin:auto;
-    overflow:hidden;
-    width:980px;
-}
-
-#example {
-    display:none;
-    overflow:hidden;
-    width:1960px;
-}
-
-.left-col,.right-col {
-    float:left;
-    padding:10px;
-    width:470px;
-}
-
-header {
-    overflow:hidden;
-}
-
-header .right-col {
-    margin-top: 18px;
-    text-align:right;
-}
-
 th, td {
     width:20%;
 }
