@@ -13,9 +13,9 @@ var app = {
 
             $('#signup-login').show();
 
-            /* Load workflow queries based on option selected in page */
+            /* Load workflow based on option selected in page */
             var querySet                        = $('input[name=loginBefore]:checked').val();
-            cartInit.workflow                   = queries[querySet];
+            cartInit.workflow                   = workflows[querySet];
 
             window.cartTurbine                  = new Turbine(cartInit);
 
@@ -90,6 +90,7 @@ var app = {
                 self.showSignup();
             }
 
+            $('#checkout-button').removeClass('disabled').html('Checkout');
             $('#checkout-alert').show().delay(3000).fadeOut('fast');
         });
 
