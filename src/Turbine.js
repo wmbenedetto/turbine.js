@@ -395,7 +395,7 @@ if (typeof MINIFIED === 'undefined'){
 
                 /* Name all queries in sequence as "SEQUENCE_STEP_1", "SEQUENCE_STEP_2", etc.
                  * Only the "default" response body is needed since all query responses default to "default" */
-                workflow[stepBaseName + currentStepCount]    = { default : query };
+                workflow[stepBaseName + currentStepCount]    = { 'default' : query };
             }
 
             return workflow;
