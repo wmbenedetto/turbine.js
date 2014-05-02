@@ -1290,7 +1290,7 @@ if (typeof MINIFIED === 'undefined'){
         startDelayTimeout : function(query,response) {
 
             if (!MINIFIED){
-                this.log('startDelayTimeout',query + ' delay started. Delayed for ' + response.delay.for + ' ms', response);
+                this.log('startDelayTimeout',query + ' delay started. Delayed for ' + response.delay['for'] + ' ms', response);
             }
 
             var self                            = this;
@@ -1299,7 +1299,7 @@ if (typeof MINIFIED === 'undefined'){
 
                 self.onDelayTimeout(query,response);
 
-            },response.delay.for);
+            },response.delay['for']);
         },
 
         /**
@@ -1311,7 +1311,7 @@ if (typeof MINIFIED === 'undefined'){
         onDelayTimeout : function(query,response) {
 
             if (!MINIFIED){
-                this.log('onDelayTimeout',query + ' delay completed after ' + response.delay.for + ' ms', response);
+                this.log('onDelayTimeout',query + ' delay completed after ' + response.delay['for'] + ' ms', response);
             }
 
             this.processResponse(query,response.delay);
